@@ -129,7 +129,7 @@ export default function Home() {
                                 verified: true,
                             },
                         ].map((tutor) => (
-                            <Link href={`/tutor/${tutor.name.toLowerCase()}`} key={tutor.name} className="overflow-hidden group bg-gray-50 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                            <Link to={`/tutor/${tutor.name.toLowerCase()}`} key={tutor.name} className="overflow-hidden group bg-gray-50 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
                                 <div className="relative">
                                     <img
                                         src={tutor.image}

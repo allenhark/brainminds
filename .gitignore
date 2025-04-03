@@ -14,7 +14,10 @@
 
 # production
 /build
-
+/dist
+dist
+node_modules
+.pnp
 # misc
 .DS_Store
 *.pem
