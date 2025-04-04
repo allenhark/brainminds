@@ -1,14 +1,13 @@
 import { Link } from "react-router-dom";
 import { Button } from "~/ui/button";
 
-// Sample tutor data
+// Sample tutor data - this would come from your API/database in a real app
 const tutorData = {
     name: "Sarah",
     title: "TEFL certified English Teacher",
     image: "https://images.unsplash.com/photo-1633332755192-727a05c4013d",
     rating: 5,
     reviews: 1704,
-    price: 25,
     location: "United States",
     languages: ["English (Native)", "Spanish (Conversational)"],
     specialties: ["Business English", "IELTS Preparation", "Conversation Practice"],
@@ -45,12 +44,11 @@ const tutorData = {
             image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e"
         }
     ],
-    rates: {
-        trial: 25,
-        individual: 35,
-        group: 20,
-        business: 45
-    }
+    badges: ["Verified Teacher", "Native Speaker", "Quick Responder"],
+    memberSince: "January 2022",
+    teachingStyle: "Conversational, Interactive, Student-centered",
+    // Teaching materials would also be part of the tutor's profile
+    materials: ["Custom PDF worksheets", "Interactive exercises", "Audio materials"]
 };
 
 // Suggested tutors data
@@ -59,7 +57,6 @@ const suggestedTutors = [
         name: "Michael",
         image: "https://images.unsplash.com/photo-1633332755192-727a05c4013d",
         description: "Native speaker specializing in IELTS and TOEFL, helping students achieve their academic aims.",
-        price: 35,
         reviews: 1567,
         verified: true,
     },
@@ -67,7 +64,6 @@ const suggestedTutors = [
         name: "Emma",
         image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
         description: "Experienced in teaching young learners, making English enjoyable for children.",
-        price: 25,
         reviews: 1603,
         verified: true,
     },
@@ -75,12 +71,10 @@ const suggestedTutors = [
         name: "James",
         image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
         description: "Former IELTS examiner with extensive test preparation experience.",
-        price: 25,
         reviews: 1892,
         verified: true,
     }
 ];
-
 
 export default function Tutor() {
     return (
@@ -97,23 +91,37 @@ export default function Tutor() {
                         />
                     </div>
 
-                    {/* Rates Section - Moved up and made more compact */}
-                    <div className="mt-4 bg-gray-50 rounded-[5px] p-3">
-                        <h3 className="text-sm font-semibold mb-2">课时费用 Tutor Rates</h3>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                            {Object.entries(tutorData.rates).map(([type, price]) => (
-                                <div key={type} className="flex justify-between items-center">
-                                    <span className="text-gray-600">{type.charAt(0).toUpperCase() + type.slice(1)}</span>
-                                    <span className="font-semibold">${price}/h</span>
-                                </div>
-                            ))}
+                    {/* Tutor Badges */}
+                    <div className="mt-4 flex flex-wrap gap-2">
+                        {tutorData.badges.map((badge, index) => (
+                            <span key={index} className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-medium">
+                                {badge}
+                            </span>
+                        ))}
+                    </div>
+
+                    {/* Quick Info */}
+                    <div className="mt-4 bg-gray-50 rounded-[5px] p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                            <i className="fas fa-user-clock text-gray-500"></i>
+                            <span className="text-sm text-gray-700">Member since {tutorData.memberSince}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <i className="fas fa-language text-gray-500"></i>
+                            <span className="text-sm text-gray-700">
+                                {tutorData.languages.join(", ")}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <i className="fas fa-graduation-cap text-gray-500"></i>
+                            <span className="text-sm text-gray-700">{tutorData.education[0]}</span>
                         </div>
                     </div>
 
                     {/* Action Buttons */}
                     <div className="mt-4 space-y-3">
                         <Button className="w-full bg-red-500 hover:bg-red-600 text-white">
-                            预约试课 Book Trial Lesson
+                            开始学习 Start Learning
                         </Button>
                         <Button variant="outline" className="w-full">
                             发送消息 Send Message
@@ -161,24 +169,40 @@ export default function Tutor() {
                         ))}
                     </div>
 
-                    <div className="flex items-center justify-between p-6 bg-gray-50 rounded-xl border border-gray-100">
+                    {/* Replace Trial Lesson Card with Subscription Info */}
+                    <div className="flex items-center justify-between p-6 bg-gradient-to-r from-red-50 to-red-100 rounded-xl border border-red-200 mb-8">
                         <div>
-                            <p className="text-3xl font-bold mb-1">${tutorData.price}/h</p>
-                            <p className="text-red-500 font-medium">1H Super Trial</p>
+                            <p className="text-3xl font-bold mb-1">¥13,000</p>
+                            <p className="text-red-500 font-medium">每月 / Per Month</p>
+                            <p className="text-sm text-gray-600 mt-1">无限制访问所有老师 Unlimited access to all tutors</p>
                         </div>
                         <Button className="bg-red-500 hover:bg-red-600 text-white px-8 py-6 text-lg rounded-lg">
-                            Book Trial Lesson
+                            立即订阅 Subscribe Now
                         </Button>
                     </div>
                 </div>
             </div>
 
-
-
             {/* About Section */}
             <section className="mb-12">
                 <h2 className="text-2xl font-semibold mb-4">About Me</h2>
                 <p className="text-gray-600 whitespace-pre-line">{tutorData.about}</p>
+
+                {/* Teaching Style */}
+                <div className="mt-6">
+                    <h3 className="text-lg font-medium mb-3">教学风格 Teaching Style</h3>
+                    <p className="text-gray-600">{tutorData.teachingStyle}</p>
+                </div>
+
+                {/* Teaching Materials */}
+                <div className="mt-6">
+                    <h3 className="text-lg font-medium mb-3">教学资料 Teaching Materials</h3>
+                    <ul className="list-disc pl-5 text-gray-600 space-y-1">
+                        {tutorData.materials.map((material, index) => (
+                            <li key={index}>{material}</li>
+                        ))}
+                    </ul>
+                </div>
             </section>
 
             {/* Testimonials Section */}
@@ -226,7 +250,7 @@ export default function Tutor() {
 
             <hr className="my-16" />
 
-            {/* Suggested Tutors */}
+            {/* Update Suggested Tutors Section */}
             <section className="mb-16">
                 <h2 className="text-2xl font-semibold mb-8">专业英语老师 Professional English Tutors</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -248,8 +272,7 @@ export default function Tutor() {
                                         size="icon"
                                         className="absolute top-2 right-2 z-10 text-white hover:text-primary bg-black/20 rounded-full"
                                         onClick={(e) => {
-                                            e.preventDefault(); // Prevent navigation when clicking heart
-                                            // Add favorite logic here
+                                            e.preventDefault();
                                         }}
                                     >
                                         <i className="fas fa-heart h-4 w-4"></i>
@@ -273,8 +296,10 @@ export default function Tutor() {
                                         {tutor.description}
                                     </p>
                                     <div className="flex items-center justify-between pt-2 border-t">
-                                        <p className="font-semibold">${tutor.price}/h</p>
-                                        <p className="text-xs text-red-500">1ST lesson free</p>
+                                        <p className="text-sm text-gray-600">Included in subscription</p>
+                                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600">
+                                            View Profile
+                                        </Button>
                                     </div>
                                 </div>
                             </div>
