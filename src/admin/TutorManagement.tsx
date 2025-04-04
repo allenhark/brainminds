@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Api from '@/Api';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from '@/components/ui/use-toast';
+import toast from 'react-hot-toast';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 
 type Tutor = {
@@ -12,22 +12,9 @@ type Tutor = {
     lastName: string;
     email: string;
     phone?: string;
-    subjects?: string[];
     rate?: number;
-    rating?: number;
-    status: 'ACTIVE' | 'INACTIVE' | 'PENDING_VERIFICATION';
+    status: 'ACTIVE' | 'INACTIVE';
     createdAt: string;
-    tutorProfile?: {
-        id: number;
-        educationLevel: string;
-        teachingStyle: string;
-        teachingMaterials: string;
-        aboutMe: string;
-        availability: string;
-        timezone: string;
-        lessonDuration: number;
-        applicationStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
-    };
 };
 
 type TutorApplication = {
@@ -64,11 +51,7 @@ const TutorManagement: React.FC = () => {
             setActiveTutors(response.data);
         } catch (error) {
             console.error('Failed to fetch tutors:', error);
-            toast({
-                title: "Error",
-                description: "Failed to load tutors. Please try again.",
-                variant: "destructive",
-            });
+            toast.error("Failed to load tutors. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -80,11 +63,7 @@ const TutorManagement: React.FC = () => {
             setPendingApplications(response.data);
         } catch (error) {
             console.error('Failed to fetch pending applications:', error);
-            toast({
-                title: "Error",
-                description: "Failed to load pending applications.",
-                variant: "destructive",
-            });
+            toast.error("Failed to load pending applications.");
         }
     };
 
@@ -123,37 +102,23 @@ const TutorManagement: React.FC = () => {
     const handleApproveApplication = async (id: number) => {
         try {
             await Api.put(`/admin/tutors/${id}/activate`);
-            toast({
-                title: "Success",
-                description: "Tutor application approved successfully.",
-            });
+            toast.success("Tutor application approved successfully.");
             fetchPendingApplications();
             fetchTutors();
         } catch (error) {
             console.error('Failed to approve tutor:', error);
-            toast({
-                title: "Error",
-                description: "Failed to approve tutor application.",
-                variant: "destructive",
-            });
+            toast.error("Failed to approve tutor application.");
         }
     };
 
     const handleRejectApplication = async (id: number) => {
         try {
             await Api.put(`/admin/tutors/${id}/reject`);
-            toast({
-                title: "Success",
-                description: "Tutor application rejected.",
-            });
+            toast.success("Tutor application rejected.");
             fetchPendingApplications();
         } catch (error) {
             console.error('Failed to reject tutor:', error);
-            toast({
-                title: "Error",
-                description: "Failed to reject tutor application.",
-                variant: "destructive",
-            });
+            toast.error("Failed to reject tutor application.");
         }
     };
 
@@ -161,18 +126,11 @@ const TutorManagement: React.FC = () => {
         if (window.confirm('Are you sure you want to delete this tutor?')) {
             try {
                 await Api.delete(`/admin/tutors/${id}`);
-                toast({
-                    title: "Success",
-                    description: "Tutor deleted successfully.",
-                });
+                toast.success("Tutor deleted successfully.");
                 fetchTutors();
             } catch (error) {
                 console.error('Failed to delete tutor:', error);
-                toast({
-                    title: "Error",
-                    description: "Failed to delete tutor.",
-                    variant: "destructive",
-                });
+                toast.error("Failed to delete tutor.");
             }
         }
     };
@@ -180,60 +138,65 @@ const TutorManagement: React.FC = () => {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-800">Tutor Management</h2>
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-800">Tutor Management</h2>
+                    <p className="text-gray-500">老师管理</p>
+                </div>
                 <Button
                     onClick={handleCreateTutor}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+                    className="bg-red-500 hover:bg-red-600 text-white rounded-full px-6"
                 >
-                    <i className="far fa-plus mr-2"></i> Add New Tutor
+                    <i className="far fa-plus mr-2"></i>
+                    Add New Tutor
                 </Button>
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="mb-4">
-                    <TabsTrigger value="tutors">Active Tutors</TabsTrigger>
-                    <TabsTrigger value="applications">Pending Applications</TabsTrigger>
+                <TabsList className="mb-4 bg-white p-1 rounded-xl">
+                    <TabsTrigger value="tutors" className="rounded-lg data-[state=active]:bg-red-50 data-[state=active]:text-red-600">
+                        Active Tutors
+                    </TabsTrigger>
+                    <TabsTrigger value="applications" className="rounded-lg data-[state=active]:bg-red-50 data-[state=active]:text-red-600">
+                        Pending Applications
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="tutors">
                     {/* Filters and Search */}
-                    <div className="bg-white rounded-lg p-5 shadow-sm mb-5">
+                    <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
                         <div className="flex flex-wrap gap-4">
                             <div className="flex-1 min-w-[200px]">
-                                <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">Search</label>
                                 <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <i className="far fa-search text-gray-400"></i>
-                                    </div>
+                                    <i className="far fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                                     <input
                                         type="text"
-                                        id="search"
-                                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         placeholder="Search tutors..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
                                     />
                                 </div>
                             </div>
 
                             <div>
-                                <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                                <select
-                                    id="status"
-                                    className="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    value={filterStatus}
-                                    onChange={(e) => setFilterStatus(e.target.value as 'all' | 'ACTIVE' | 'INACTIVE')}
-                                >
-                                    <option value="all">All</option>
-                                    <option value="ACTIVE">Active</option>
-                                    <option value="INACTIVE">Inactive</option>
-                                </select>
+                                <div className="relative">
+                                    <i className="far fa-filter absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                    <select
+                                        value={filterStatus}
+                                        onChange={(e) => setFilterStatus(e.target.value as 'all' | 'ACTIVE' | 'INACTIVE')}
+                                        className="pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent appearance-none bg-white"
+                                    >
+                                        <option value="all">All Status</option>
+                                        <option value="ACTIVE">Active</option>
+                                        <option value="INACTIVE">Inactive</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Tutors Table */}
-                    <div className="bg-white rounded-lg p-5 shadow-sm overflow-hidden">
+                    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
                         {loading ? (
                             <div className="flex justify-center items-center py-12">
                                 <LoadingSpinner />
@@ -243,35 +206,19 @@ const TutorManagement: React.FC = () => {
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead className="bg-gray-50">
                                         <tr>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Tutor
-                                            </th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Contact
-                                            </th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Subjects
-                                            </th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Rate ($/hr)
-                                            </th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Status
-                                            </th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Join Date
-                                            </th>
-                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Actions
-                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tutor</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {filteredTutors.map((tutor) => (
-                                            <tr key={tutor.id}>
+                                            <tr key={tutor.id} className="hover:bg-gray-50">
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center">
-                                                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+                                                        <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-medium">
                                                             {`${tutor.firstName.charAt(0)}${tutor.lastName.charAt(0)}`}
                                                         </div>
                                                         <div className="ml-4">
@@ -282,15 +229,6 @@ const TutorManagement: React.FC = () => {
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="text-sm text-gray-900">{tutor.email}</div>
                                                     <div className="text-sm text-gray-500">{tutor.phone || 'N/A'}</div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {tutor.subjects?.map((subject, index) => (
-                                                            <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                                {subject}
-                                                            </span>
-                                                        )) || 'Not specified'}
-                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                     ${tutor.rate || 'N/A'}
@@ -303,45 +241,54 @@ const TutorManagement: React.FC = () => {
                                                         {tutor.status.toLowerCase()}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {new Date(tutor.createdAt).toLocaleDateString()}
-                                                </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <button
-                                                        onClick={() => handleViewTutor(tutor.id)}
-                                                        className="text-blue-600 hover:text-blue-900 mr-3"
-                                                        title="View Details"
-                                                    >
-                                                        <i className="far fa-eye"></i>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleEditTutor(tutor.id)}
-                                                        className="text-blue-600 hover:text-blue-900 mr-3"
-                                                        title="Edit Profile"
-                                                    >
-                                                        <i className="far fa-edit"></i>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleViewSchedule(tutor.id)}
-                                                        className="text-blue-600 hover:text-blue-900 mr-3"
-                                                        title="View Schedule"
-                                                    >
-                                                        <i className="far fa-calendar"></i>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleViewStudents(tutor.id)}
-                                                        className="text-blue-600 hover:text-blue-900 mr-3"
-                                                        title="View Students"
-                                                    >
-                                                        <i className="far fa-users"></i>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteTutor(tutor.id)}
-                                                        className="text-red-600 hover:text-red-900"
-                                                        title="Delete Tutor"
-                                                    >
-                                                        <i className="far fa-trash-alt"></i>
-                                                    </button>
+                                                    <div className="flex items-center space-x-2">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleViewTutor(tutor.id)}
+                                                            className="text-gray-600 hover:text-red-600"
+                                                        >
+                                                            <i className="far fa-eye mr-1"></i>
+                                                            View
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleEditTutor(tutor.id)}
+                                                            className="text-gray-600 hover:text-red-600"
+                                                        >
+                                                            <i className="far fa-edit mr-1"></i>
+                                                            Edit
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleViewSchedule(tutor.id)}
+                                                            className="text-gray-600 hover:text-red-600"
+                                                        >
+                                                            <i className="far fa-calendar-alt mr-1"></i>
+                                                            Schedule
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleViewStudents(tutor.id)}
+                                                            className="text-gray-600 hover:text-red-600"
+                                                        >
+                                                            <i className="far fa-user-graduate mr-1"></i>
+                                                            Students
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleDeleteTutor(tutor.id)}
+                                                            className="text-red-600 hover:text-red-700"
+                                                        >
+                                                            <i className="far fa-trash-alt mr-1"></i>
+                                                            Delete
+                                                        </Button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -349,45 +296,17 @@ const TutorManagement: React.FC = () => {
                                 </table>
 
                                 {filteredTutors.length === 0 && (
-                                    <div className="text-center py-8">
+                                    <div className="text-center py-12">
                                         <p className="text-gray-500">No tutors found matching your search criteria</p>
                                     </div>
                                 )}
-                            </div>
-                        )}
-
-                        {/* Pagination */}
-                        {filteredTutors.length > 0 && (
-                            <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 sm:px-6 mt-4">
-                                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                                    <div>
-                                        <p className="text-sm text-gray-700">
-                                            Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredTutors.length}</span> of <span className="font-medium">{filteredTutors.length}</span> results
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                                            <button className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                                <span className="sr-only">Previous</span>
-                                                <i className="far fa-chevron-left text-gray-400"></i>
-                                            </button>
-                                            <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-blue-600 hover:bg-blue-50">
-                                                1
-                                            </button>
-                                            <button className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                                <span className="sr-only">Next</span>
-                                                <i className="far fa-chevron-right text-gray-400"></i>
-                                            </button>
-                                        </nav>
-                                    </div>
-                                </div>
                             </div>
                         )}
                     </div>
                 </TabsContent>
 
                 <TabsContent value="applications">
-                    <div className="bg-white rounded-lg p-5 shadow-sm overflow-hidden">
+                    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
                         {loading ? (
                             <div className="flex justify-center items-center py-12">
                                 <LoadingSpinner />
@@ -416,7 +335,7 @@ const TutorManagement: React.FC = () => {
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {pendingApplications.map((application) => (
-                                            <tr key={application.id}>
+                                            <tr key={application.id} className="hover:bg-gray-50">
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center">
                                                         <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 font-medium">
@@ -437,27 +356,35 @@ const TutorManagement: React.FC = () => {
                                                     {new Date(application.createdAt).toLocaleDateString()}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <button
-                                                        onClick={() => handleViewTutor(application.id)}
-                                                        className="text-blue-600 hover:text-blue-900 mr-3"
-                                                        title="View Application"
-                                                    >
-                                                        <i className="far fa-eye"></i>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleApproveApplication(application.id)}
-                                                        className="text-green-600 hover:text-green-900 mr-3"
-                                                        title="Approve Application"
-                                                    >
-                                                        <i className="far fa-check"></i>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleRejectApplication(application.id)}
-                                                        className="text-red-600 hover:text-red-900"
-                                                        title="Reject Application"
-                                                    >
-                                                        <i className="far fa-times"></i>
-                                                    </button>
+                                                    <div className="flex items-center justify-end space-x-2">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleViewTutor(application.id)}
+                                                            className="text-gray-600 hover:text-red-600"
+                                                        >
+                                                            <i className="far fa-eye mr-1"></i>
+                                                            View
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleApproveApplication(application.id)}
+                                                            className="text-green-600 hover:text-green-700"
+                                                        >
+                                                            <i className="far fa-check mr-1"></i>
+                                                            Approve
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleRejectApplication(application.id)}
+                                                            className="text-red-600 hover:text-red-700"
+                                                        >
+                                                            <i className="far fa-times mr-1"></i>
+                                                            Reject
+                                                        </Button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -465,7 +392,7 @@ const TutorManagement: React.FC = () => {
                                 </table>
 
                                 {pendingApplications.length === 0 && (
-                                    <div className="text-center py-8">
+                                    <div className="text-center py-12">
                                         <p className="text-gray-500">No pending applications</p>
                                     </div>
                                 )}

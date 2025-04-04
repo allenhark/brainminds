@@ -1,175 +1,158 @@
-import React, { useState } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
-import { cn } from '../lib/utils';
-import { Button } from '../components/ui/button';
-
-type SidebarItem = {
-    title: string;
-    icon: string;
-    path: string;
-    badge?: string | number;
-};
+import React, { useState, useEffect } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { useToast } from 'react-hot-toast';
 
 const AdminLayout: React.FC = () => {
     const [collapsed, setCollapsed] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [pageTitle, setPageTitle] = useState('');
     const location = useLocation();
+    const navigate = useNavigate();
+    const toast = useToast();
 
-    const mainItems: SidebarItem[] = [
-        { title: 'Dashboard', icon: 'far fa-home', path: '/admin' },
-        { title: 'Tutors', icon: 'far fa-user', path: '/admin/tutors', badge: 24 },
-        { title: 'Students', icon: 'far fa-users', path: '/admin/students', badge: 56 },
-        { title: 'Schedule', icon: 'far fa-calendar', path: '/admin/schedule' },
-        { title: 'Payments', icon: 'far fa-credit-card', path: '/admin/payments' },
-        { title: 'Messaging', icon: 'far fa-comment', path: '/admin/messaging', badge: 3 },
+    useEffect(() => {
+        // Set page title based on current route
+        const path = location.pathname;
+        if (path.includes('/tutors')) {
+            setPageTitle('Tutor Management');
+        } else if (path.includes('/students')) {
+            setPageTitle('Student Management');
+        } else if (path.includes('/sessions')) {
+            setPageTitle('Session Management');
+        } else if (path.includes('/payments')) {
+            setPageTitle('Payment Management');
+        } else if (path.includes('/settings')) {
+            setPageTitle('Settings');
+        } else {
+            setPageTitle('Dashboard');
+        }
+    }, [location]);
+
+    const mainItems = [
+        { icon: 'far fa-chalkboard-teacher', label: 'Tutors', path: '/admin/tutors', badge: '12' },
+        { icon: 'far fa-calendar-alt', label: 'Sessions', path: '/admin/sessions', badge: '5' },
+        { icon: 'far fa-comment-alt', label: 'Messages', path: '/admin/messages', badge: '3' },
+        { icon: 'far fa-credit-card', label: 'Payments', path: '/admin/payments' },
     ];
 
-    const bottomItems: SidebarItem[] = [
-        { title: 'Settings', icon: 'far fa-cog', path: '/admin/settings' },
-        { title: 'Logout', icon: 'far fa-sign-out-alt', path: '/logout' },
+    const bottomItems = [
+        { icon: 'far fa-cog', label: 'Settings', path: '/admin/settings' },
     ];
 
-    const StatCard = ({
-        title,
-        value,
-        icon,
-        change,
-        changeType = "positive"
-    }: {
-        title: string;
-        value: string;
-        icon: string;
-        change?: string;
-        changeType?: "positive" | "negative";
-    }) => (
-        <div className="bg-white rounded-lg p-5 shadow-sm">
-            <div className="flex justify-between items-start">
-                <div>
-                    <p className="text-gray-500 text-sm">{title}</p>
-                    <h3 className="text-2xl font-bold mt-1">{value}</h3>
-                    {change && (
-                        <p className={`text-xs mt-2 ${changeType === "positive" ? "text-green-500" : "text-red-500"}`}>
-                            {changeType === "positive" ? "↑" : "↓"} {change}
-                        </p>
-                    )}
-                </div>
-                <div className="p-2 bg-blue-50 rounded-lg">
-                    <i className={`${icon} text-blue-500 text-xl`}></i>
-                </div>
-            </div>
-        </div>
-    );
+    const handleLogout = () => {
+        // Implement logout logic
+        toast.success('Logged out successfully');
+        navigate('/login');
+    };
 
     return (
         <div className="flex h-screen bg-gray-50">
             {/* Sidebar */}
-            <aside
-                className={cn(
-                    "bg-white border-r border-gray-200 flex flex-col transition-all duration-300",
-                    collapsed ? "w-[70px]" : "w-[250px]"
-                )}
+            <div
+                className={`fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-md transform transition-transform duration-200 ease-in-out ${collapsed ? '-translate-x-full md:translate-x-0 md:w-20' : 'translate-x-0'
+                    } ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
             >
-                {/* Logo */}
-                <div className="h-16 border-b border-gray-200 flex items-center px-4">
-                    <Link to="/admin" className="flex items-center">
-                        <div className="h-8 w-8 rounded-md bg-blue-600 flex items-center justify-center text-white font-bold text-lg">
-                            B
-                        </div>
+                <div className="flex flex-col h-full">
+                    {/* Logo */}
+                    <div className="flex items-center justify-between h-16 px-4 border-b">
                         {!collapsed && (
-                            <span className="ml-2 font-semibold text-gray-800">BrainMinds</span>
+                            <h1 className="text-xl font-bold text-red-600">BrainMinds</h1>
                         )}
-                    </Link>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="ml-auto"
-                        onClick={() => setCollapsed(!collapsed)}
-                    >
-                        <i className="far fa-th text-gray-500"></i>
-                    </Button>
-                </div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="md:hidden"
+                            onClick={() => setMobileMenuOpen(false)}
+                        >
+                            <i className="far fa-times h-5 w-5"></i>
+                        </Button>
+                    </div>
 
-                {/* Main menu items */}
-                <div className="flex-1 py-4 overflow-y-auto">
-                    <div className="px-3 mb-2">
-                        {!collapsed && <p className="text-xs font-semibold text-gray-400 mb-2 px-3">MAIN</p>}
-                        <ul className="space-y-1">
-                            {mainItems.map((item) => (
-                                <li key={item.path}>
-                                    <Link
-                                        to={item.path}
-                                        className={cn(
-                                            "flex items-center px-3 py-2 rounded-md text-sm font-medium",
-                                            location.pathname === item.path
-                                                ? "bg-blue-50 text-blue-600"
-                                                : "text-gray-700 hover:bg-gray-100"
+                    {/* Navigation */}
+                    <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+                        {mainItems.map((item) => (
+                            <Button
+                                key={item.path}
+                                variant={location.pathname.includes(item.path) ? 'default' : 'ghost'}
+                                className={`w-full justify-start mb-1 ${location.pathname.includes(item.path)
+                                        ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                        : 'text-gray-600 hover:bg-gray-100'
+                                    }`}
+                                onClick={() => navigate(item.path)}
+                            >
+                                <i className={`${item.icon} mr-3 h-5 w-5`}></i>
+                                {!collapsed && (
+                                    <>
+                                        <span className="flex-1">{item.label}</span>
+                                        {item.badge && (
+                                            <span className="ml-2 bg-red-100 text-red-600 text-xs font-medium px-2 py-0.5 rounded-full">
+                                                {item.badge}
+                                            </span>
                                         )}
-                                    >
-                                        <span className="flex-shrink-0">
-                                            <i className={`${item.icon} ${location.pathname === item.path ? 'text-blue-600' : 'text-gray-400'}`}></i>
-                                        </span>
-                                        {!collapsed && (
-                                            <>
-                                                <span className="ml-3 flex-1">{item.title}</span>
-                                                {item.badge && (
-                                                    <span className="ml-auto bg-blue-100 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full">
-                                                        {item.badge}
-                                                    </span>
-                                                )}
-                                            </>
-                                        )}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
+                                    </>
+                                )}
+                            </Button>
+                        ))}
+                    </nav>
+
+                    {/* Bottom Navigation */}
+                    <div className="px-2 py-4 border-t">
+                        {bottomItems.map((item) => (
+                            <Button
+                                key={item.path}
+                                variant={location.pathname.includes(item.path) ? 'default' : 'ghost'}
+                                className={`w-full justify-start mb-1 ${location.pathname.includes(item.path)
+                                        ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                        : 'text-gray-600 hover:bg-gray-100'
+                                    }`}
+                                onClick={() => navigate(item.path)}
+                            >
+                                <i className={`${item.icon} mr-3 h-5 w-5`}></i>
+                                {!collapsed && <span>{item.label}</span>}
+                            </Button>
+                        ))}
                     </div>
                 </div>
-
-                {/* Bottom menu items */}
-                <div className="py-4 border-t border-gray-200">
-                    <div className="px-3">
-                        <ul className="space-y-1">
-                            {bottomItems.map((item) => (
-                                <li key={item.path}>
-                                    <Link
-                                        to={item.path}
-                                        className={cn(
-                                            "flex items-center px-3 py-2 rounded-md text-sm font-medium",
-                                            location.pathname === item.path
-                                                ? "bg-blue-50 text-blue-600"
-                                                : "text-gray-700 hover:bg-gray-100"
-                                        )}
-                                    >
-                                        <span className="flex-shrink-0">
-                                            <i className={`${item.icon} ${location.pathname === item.path ? 'text-blue-600' : 'text-gray-400'}`}></i>
-                                        </span>
-                                        {!collapsed && <span className="ml-3">{item.title}</span>}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                </div>
-            </aside>
+            </div>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Top navbar */}
-                <header className="bg-white border-b border-gray-200 h-16 flex items-center px-6">
-                    <h1 className="text-xl font-semibold text-gray-800">Dashboard</h1>
-                    <div className="ml-auto flex items-center space-x-4">
-                        <Button variant="ghost" size="sm">
-                            Help
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                            Settings
-                        </Button>
-                        <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white">
-                            A
+            <div className={`flex-1 flex flex-col ${collapsed ? 'md:ml-20' : 'md:ml-64'}`}>
+                {/* Header */}
+                <header className="bg-white shadow-sm z-10">
+                    <div className="flex items-center justify-between h-16 px-4">
+                        <div className="flex items-center">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="mr-4 md:hidden"
+                                onClick={() => setMobileMenuOpen(true)}
+                            >
+                                <i className="far fa-bars h-5 w-5"></i>
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="hidden md:flex mr-4"
+                                onClick={() => setCollapsed(!collapsed)}
+                            >
+                                <i className={`far fa-chevron-${collapsed ? 'right' : 'left'} h-5 w-5`}></i>
+                            </Button>
+                            <h2 className="text-xl font-semibold text-gray-800">{pageTitle}</h2>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                            <Button variant="ghost" size="icon" className="relative">
+                                <i className="far fa-bell h-5 w-5"></i>
+                                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500"></span>
+                            </Button>
+                            <Button variant="ghost" onClick={handleLogout}>
+                                Logout
+                            </Button>
                         </div>
                     </div>
                 </header>
 
-                {/* Content area with scrolling */}
+                {/* Page Content */}
                 <main className="flex-1 overflow-y-auto p-6">
                     <Outlet />
                 </main>

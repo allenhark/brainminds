@@ -15,28 +15,45 @@ import ScheduleManagement from './admin/ScheduleManagement'
 import PaymentsManagement from './admin/PaymentsManagement'
 import MessagingManagement from './admin/MessagingManagement'
 
+// Tutor management imports
+import TutorDetails from './admin/tutors/TutorDetails'
+import TutorEdit from './admin/tutors/TutorEdit'
+import TutorSchedule from './admin/tutors/TutorSchedule'
+import TutorStudents from './admin/tutors/TutorStudents'
+import CreateTutor from './admin/tutors/CreateTutor'
+
+// UI Components Provider
+import { ToastProvider } from './components/ui/use-toast'
+
 function App() {
   return (
-    <Routes>
-      {/* Main site routes */}
-      <Route element={<Layout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/pricing" element={<Pricing />} />
-        <Route path="/become-tutor" element={<BecomeATutor />} />
-        <Route path="/login" element={<LoginSignup />} />
-        <Route path="/tutor/:slug" element={<Tutor />} />
-      </Route>
+    <ToastProvider>
+      <Routes>
+        {/* Main site routes */}
+        <Route element={<Layout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/become-tutor" element={<BecomeATutor />} />
+          <Route path="/login" element={<LoginSignup />} />
+          <Route path="/tutor/:slug" element={<Tutor />} />
+        </Route>
 
-      {/* Admin routes */}
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<Dashboard />} />
-        <Route path="tutors" element={<TutorManagement />} />
-        <Route path="students" element={<StudentManagement />} />
-        <Route path="schedule" element={<ScheduleManagement />} />
-        <Route path="payments" element={<PaymentsManagement />} />
-        <Route path="messaging" element={<MessagingManagement />} />
-      </Route>
-    </Routes>
+        {/* Admin routes */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="tutors" element={<TutorManagement />} />
+          <Route path="tutors/:id" element={<TutorDetails />} />
+          <Route path="tutors/:id/edit" element={<TutorEdit />} />
+          <Route path="tutors/:id/schedule" element={<TutorSchedule />} />
+          <Route path="tutors/:id/students" element={<TutorStudents />} />
+          <Route path="tutors/create" element={<CreateTutor />} />
+          <Route path="students" element={<StudentManagement />} />
+          <Route path="schedule" element={<ScheduleManagement />} />
+          <Route path="payments" element={<PaymentsManagement />} />
+          <Route path="messaging" element={<MessagingManagement />} />
+        </Route>
+      </Routes>
+    </ToastProvider>
   )
 }
 
