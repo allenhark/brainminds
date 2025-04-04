@@ -1,7 +1,20 @@
 import { useState, useRef } from 'react';
 import { z } from 'zod';
-import { Button } from "~/ui/button";
-import { Input } from "~/ui/input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import Api from '@/Api';
+import { useUser } from '@/contexts/UserContext';
+import { useNavigate } from 'react-router-dom';
+
+// Define error type for API responses
+interface ApiError {
+    response?: {
+        status: number;
+        data: {
+            message: string;
+        };
+    };
+}
 
 // Validation schemas
 const loginSchema = z.object({
@@ -110,11 +123,11 @@ const PasswordStrengthMeter = ({ password }: { password: string }) => {
                     <div
                         key={bar}
                         className={`h-1 flex-1 rounded-full ${bar <= strength
-                                ? strength === 1 ? 'bg-red-500'
-                                    : strength === 2 ? 'bg-orange-500'
-                                        : strength === 3 ? 'bg-yellow-500'
-                                            : 'bg-green-500'
-                                : 'bg-gray-200'
+                            ? strength === 1 ? 'bg-red-500'
+                                : strength === 2 ? 'bg-orange-500'
+                                    : strength === 3 ? 'bg-yellow-500'
+                                        : 'bg-green-500'
+                            : 'bg-gray-200'
                             }`}
                     />
                 ))}
@@ -126,6 +139,7 @@ const PasswordStrengthMeter = ({ password }: { password: string }) => {
 
 const LoginSignup = () => {
     const [formState, setFormState] = useState<FormState>('login');
+    const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',
@@ -135,6 +149,8 @@ const LoginSignup = () => {
         verificationCode: '',
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const { login, refreshUser } = useUser();
+    const navigate = useNavigate();
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -147,13 +163,22 @@ const LoginSignup = () => {
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsLoading(true);
         try {
             const validatedData = loginSchema.parse({
                 email: formData.email,
                 password: formData.password,
             });
-            // TODO: Implement login API call
-            console.log('Login:', validatedData);
+
+            // Use the UserContext login method instead of direct API call
+            await login(validatedData.email, validatedData.password);
+
+            // Ensure user data is refreshed
+            await refreshUser();
+
+            // Navigate to home page
+            navigate('/');
+
         } catch (error) {
             if (error instanceof z.ZodError) {
                 const newErrors: Record<string, string> = {};
@@ -163,18 +188,41 @@ const LoginSignup = () => {
                     }
                 });
                 setErrors(newErrors);
+            } else {
+                // Handle API errors
+                setErrors({
+                    email: 'Invalid credentials',
+                    password: 'Invalid credentials'
+                });
             }
+        } finally {
+            setIsLoading(false);
         }
     };
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsLoading(true);
         try {
             const validatedData = signupSchema.parse(formData);
-            // TODO: Implement signup API call
-            console.log('Signup:', validatedData);
-            setFormState('verifyEmail');
-        } catch (error) {
+
+            const response = await Api.post('/auth/signup', {
+                firstName: validatedData.firstName,
+                lastName: validatedData.lastName,
+                email: validatedData.email,
+                password: validatedData.password
+            });
+
+            // Check for requiresVerification flag from backend
+            if (response.data.requiresVerification) {
+                // Store email for verification
+                setFormData(prev => ({ ...prev, email: validatedData.email }));
+                setFormState('verifyEmail');
+            } else {
+                // If no verification required, redirect to login
+                setFormState('login');
+            }
+        } catch (error: unknown) {
             if (error instanceof z.ZodError) {
                 const newErrors: Record<string, string> = {};
                 error.errors.forEach(err => {
@@ -183,35 +231,160 @@ const LoginSignup = () => {
                     }
                 });
                 setErrors(newErrors);
+            } else if ((error as ApiError).response?.status === 400) {
+                // Handle API errors with specific messages
+                setErrors({ email: (error as ApiError).response?.data.message || 'Email already exists' });
+            } else {
+                // Handle other API errors
+                setErrors({ email: 'An error occurred. Please try again.' });
             }
+        } finally {
+            setIsLoading(false);
         }
     };
 
     const handleResetPassword = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsLoading(true);
         try {
             const validatedEmail = z.string().email().parse(formData.email);
-            // TODO: Implement reset password API call
-            console.log('Reset password for:', validatedEmail);
-            setFormState('verifyEmail');
-        } catch (error) {
-            setErrors({ email: 'Invalid email format' });
+
+            const response = await Api.post('/auth/reset-password', {
+                email: validatedEmail
+            });
+
+            // Server always returns 200 for security reasons, even if email doesn't exist
+            if (response.status === 200) {
+                // Show success message regardless of whether email exists
+                setErrors({});
+                setFormState('verifyEmail');
+            }
+        } catch (error: unknown) {
+            if (error instanceof z.ZodError) {
+                const newErrors: Record<string, string> = {};
+                error.errors.forEach(err => {
+                    if (err.path[0]) {
+                        newErrors[err.path[0].toString()] = err.message;
+                    }
+                });
+                setErrors(newErrors);
+            } else if ((error as ApiError).response?.status === 400) {
+                // Handle API errors with specific messages
+                setErrors({ email: (error as ApiError).response?.data.message || 'An error occurred. Please try again.' });
+            } else {
+                // Handle other API errors
+                setErrors({ email: 'An error occurred. Please try again.' });
+            }
+        } finally {
+            setIsLoading(false);
         }
     };
 
     const handleVerifyCode = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsLoading(true);
         try {
             const validatedCode = verificationSchema.parse({ code: formData.verificationCode });
-            // TODO: Implement verification API call
-            console.log('Verify code:', validatedCode);
-            if (formState === 'verifyEmail') {
-                setFormState('login');
+
+            const response = await Api.post('/auth/verify-email', {
+                code: validatedCode.code,
+                email: formData.email
+            });
+
+            // Check if token is returned (auto-login after verification)
+            if (response.data.token) {
+                // Store token and user data
+                sessionStorage.setItem('jwt', response.data.token);
+
+                // If we have user data, update the user context
+                if (response.data.user) {
+                    // Redirect to home page
+                    window.location.href = '/';
+                } else {
+                    // If no user data, go to login
+                    setFormState('login');
+                }
             } else {
-                setFormState('newPassword');
+                // If no token, just go to login
+                setFormState('login');
             }
-        } catch (error) {
-            setErrors({ verificationCode: 'Invalid verification code' });
+        } catch (error: unknown) {
+            if (error instanceof z.ZodError) {
+                const newErrors: Record<string, string> = {};
+                error.errors.forEach(err => {
+                    if (err.path[0]) {
+                        newErrors[err.path[0].toString()] = err.message;
+                    }
+                });
+                setErrors(newErrors);
+            } else if ((error as ApiError).response?.status === 400) {
+                // Handle API errors with specific messages
+                setErrors({ verificationCode: (error as ApiError).response?.data.message || 'Invalid verification code' });
+            } else {
+                // Handle other API errors
+                setErrors({ verificationCode: 'An error occurred. Please try again.' });
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleSetNewPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        try {
+            const validatedData = z.object({
+                password: z.string().min(8, 'Password must be at least 8 characters'),
+                confirmPassword: z.string()
+            }).refine((data) => data.password === data.confirmPassword, {
+                message: "Passwords don't match",
+                path: ["confirmPassword"],
+            }).parse({
+                password: formData.password,
+                confirmPassword: formData.confirmPassword
+            });
+
+            const response = await Api.post('/auth/new-password', {
+                email: formData.email,
+                password: validatedData.password,
+                code: formData.verificationCode
+            });
+
+            // Check if token is returned (auto-login after password reset)
+            if (response.data.token) {
+                // Store token and user data
+                sessionStorage.setItem('jwt', response.data.token);
+
+                // If we have user data, update the user context
+                if (response.data.user) {
+                    // Redirect to home page
+                    window.location.href = '/';
+                } else {
+                    // If no user data, go to login
+                    setFormState('login');
+                }
+            } else {
+                // If no token, just go to login
+                setFormState('login');
+            }
+        } catch (error: unknown) {
+            if (error instanceof z.ZodError) {
+                const newErrors: Record<string, string> = {};
+                error.errors.forEach(err => {
+                    if (err.path[0]) {
+                        newErrors[err.path[0].toString()] = err.message;
+                    }
+                });
+                setErrors(newErrors);
+            } else if ((error as ApiError).response?.status === 400) {
+                // Handle API errors with specific messages
+                setErrors({ password: (error as ApiError).response?.data.message || 'Failed to set new password. Please check your verification code.' });
+            } else {
+                // Handle other API errors
+                setErrors({ password: 'An error occurred. Please try again.' });
+            }
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -250,17 +423,19 @@ const LoginSignup = () => {
                 <div className="pt-2">
                     <Button
                         type="submit"
-                        className="w-full bg-red-500 hover:bg-red-600 text-white h-12 text-lg rounded-xl font-medium"
+                        disabled={isLoading}
+                        className="w-full bg-red-500 hover:bg-red-600 text-white h-12 text-lg rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        登录 / Login
+                        {isLoading ? '登录中... / Logging in...' : '登录 / Login'}
                     </Button>
                 </div>
                 <div className="text-center">
                     <Button
                         type="button"
                         onClick={() => setFormState('resetPassword')}
+                        disabled={isLoading}
                         variant="ghost"
-                        className="text-red-500 hover:text-red-600 text-sm"
+                        className="text-red-500 hover:text-red-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         忘记密码？/ Forgot Password?
                     </Button>
@@ -282,7 +457,8 @@ const LoginSignup = () => {
                 <Button
                     type="button"
                     onClick={() => setFormState('signup')}
-                    className="w-full border-2 border-red-50 text-red-600 bg-red-200 hover:bg-red-400 h-12 text-lg rounded-xl font-medium"
+                    disabled={isLoading}
+                    className="w-full border-2 border-red-50 text-red-600 bg-red-200 hover:bg-red-400 h-12 text-lg rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     注册新账号 / Sign Up
                 </Button>
@@ -368,17 +544,19 @@ const LoginSignup = () => {
             <div className="pt-2">
                 <Button
                     type="submit"
-                    className="w-full bg-red-500 hover:bg-red-600 text-white h-12 text-lg rounded-xl font-medium"
+                    disabled={isLoading}
+                    className="w-full bg-red-500 hover:bg-red-600 text-white h-12 text-lg rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    注册 / Sign Up
+                    {isLoading ? '注册中... / Signing up...' : '注册 / Sign Up'}
                 </Button>
             </div>
             <div className="text-center pt-4">
                 <Button
                     type="button"
                     onClick={() => setFormState('login')}
+                    disabled={isLoading}
                     variant="ghost"
-                    className="text-red-500 hover:text-red-600"
+                    className="text-red-500 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     返回登录 / Back to Login
                 </Button>
@@ -405,17 +583,19 @@ const LoginSignup = () => {
             <div className="pt-2">
                 <Button
                     type="submit"
-                    className="w-full bg-red-500 hover:bg-red-600 text-white h-12 text-lg rounded-xl font-medium"
+                    disabled={isLoading}
+                    className="w-full bg-red-500 hover:bg-red-600 text-white h-12 text-lg rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    发送验证码 / Send Reset Code
+                    {isLoading ? '发送中... / Sending...' : '发送验证码 / Send Reset Code'}
                 </Button>
             </div>
             <div className="text-center pt-4">
                 <Button
                     type="button"
                     onClick={() => setFormState('login')}
+                    disabled={isLoading}
                     variant="ghost"
-                    className="text-red-500 hover:text-red-600"
+                    className="text-red-500 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     返回登录 / Back to Login
                 </Button>
@@ -434,7 +614,7 @@ const LoginSignup = () => {
                     value={formData.verificationCode}
                     onChange={(value) => handleInputChange({
                         target: { name: 'verificationCode', value }
-                    } as any)}
+                    } as React.ChangeEvent<HTMLInputElement>)}
                 />
                 {errors.verificationCode && (
                     <p className="text-red-500 text-center mt-4">{errors.verificationCode}</p>
@@ -443,16 +623,17 @@ const LoginSignup = () => {
             <div className="pt-4">
                 <Button
                     type="submit"
-                    className="w-full bg-red-500 hover:bg-red-600 text-white h-14 text-xl rounded-xl"
+                    disabled={isLoading}
+                    className="w-full bg-red-500 hover:bg-red-600 text-white h-14 text-xl rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    验证 / Verify Code
+                    {isLoading ? '验证中... / Verifying...' : '验证 / Verify Code'}
                 </Button>
             </div>
         </form>
     );
 
     const renderNewPasswordForm = () => (
-        <form onSubmit={handleLogin} className="space-y-8">
+        <form onSubmit={handleSetNewPassword} className="space-y-8">
             <div className="space-y-2">
                 <label className="block text-xl mb-2">
                     <span className="block font-medium">新密码</span>
@@ -485,9 +666,10 @@ const LoginSignup = () => {
             <div className="pt-4">
                 <Button
                     type="submit"
-                    className="w-full bg-red-500 hover:bg-red-600 text-white h-14 text-xl rounded-xl"
+                    disabled={isLoading}
+                    className="w-full bg-red-500 hover:bg-red-600 text-white h-14 text-xl rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    设置新密码 / Set New Password
+                    {isLoading ? '设置中... / Setting...' : '设置新密码 / Set New Password'}
                 </Button>
             </div>
         </form>

@@ -1,448 +1,548 @@
-import { Button } from "~/ui/button";
-import { Input } from "~/ui/input";
+import { useState, FormEvent, ChangeEvent } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import Api from "@/Api";
+import { toast } from "react-hot-toast";
+
+type ApplicationStep = 'requirements' | 'personal-info' | 'education' | 'schedule' | 'avatar' | 'documents' | 'verification';
+
+interface ScheduleSlot {
+    day: string;
+    startTime: string;
+    endTime: string;
+}
+
+const APPLICATION_STEPS = [
+    { id: 'requirements', title: '申请要求', titleEn: 'Requirements' },
+    { id: 'personal-info', title: '个人信息', titleEn: 'Personal Information' },
+    { id: 'education', title: '教育背景', titleEn: 'Education & Experience' },
+    { id: 'schedule', title: '课程安排', titleEn: 'Teaching Schedule' },
+    { id: 'avatar', title: '头像上传', titleEn: 'Profile Photo' },
+    { id: 'documents', title: '文件上传', titleEn: 'Documents' },
+    { id: 'verification', title: '邮箱验证', titleEn: 'Email Verification' }
+];
+
+const CHINESE_TIMEZONES = [
+    { value: 'CST', label: '中国标准时间 (UTC+8)', labelEn: 'China Standard Time' },
+    { value: 'XJT', label: '新疆时间 (UTC+6)', labelEn: 'Xinjiang Time' },
+    { value: 'HKT', label: '香港时间 (UTC+8)', labelEn: 'Hong Kong Time' },
+    { value: 'TWT', label: '台湾时间 (UTC+8)', labelEn: 'Taiwan Time' }
+];
 
 export default function BecomeATutor() {
+    const [currentStep, setCurrentStep] = useState<ApplicationStep>('requirements');
+    const [formData, setFormData] = useState({
+        firstName: "",
+        lastName: "",
+        email: "",
+        password: "",
+        educationLevel: "",
+        teachingStyle: "",
+        teachingMaterials: "",
+        aboutMe: "",
+        timezone: "CST",
+        lessonDuration: "60",
+        schedule: [] as ScheduleSlot[]
+    });
+    const [documents, setDocuments] = useState<File[]>([]);
+    const [avatar, setAvatar] = useState<File | null>(null);
+    const [userId, setUserId] = useState<number | null>(null);
+    const [otpCode, setOtpCode] = useState("");
+
+    const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleFileChange = (e: ChangeEvent<HTMLInputElement>, type: 'document' | 'avatar') => {
+        if (e.target.files) {
+            if (type === 'document') {
+                setDocuments(Array.from(e.target.files));
+            } else {
+                setAvatar(e.target.files[0]);
+            }
+        }
+    };
+
+    const handleScheduleChange = (day: string, field: 'startTime' | 'endTime', value: string) => {
+        setFormData(prev => {
+            const existingSlot = prev.schedule.find(slot => slot.day === day);
+            if (existingSlot) {
+                return {
+                    ...prev,
+                    schedule: prev.schedule.map(slot =>
+                        slot.day === day ? { ...slot, [field]: value } : slot
+                    )
+                };
+            } else {
+                return {
+                    ...prev,
+                    schedule: [...prev.schedule, { day, startTime: '', endTime: '', [field]: value }]
+                };
+            }
+        });
+    };
+
+    const handleFormSubmit = async (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        try {
+            const formDataToSubmit = new FormData();
+
+            // Handle form data
+            Object.entries(formData).forEach(([key, value]) => {
+                if (key === 'schedule') {
+                    formDataToSubmit.append(key, JSON.stringify(value));
+                } else if (typeof value === 'string') {
+                    formDataToSubmit.append(key, value);
+                }
+            });
+
+            // Handle files
+            if (avatar) {
+                formDataToSubmit.append('avatar', avatar);
+            }
+            documents.forEach(doc => {
+                formDataToSubmit.append('documents', doc);
+            });
+
+            const response = await Api.post("/tutor/apply", formDataToSubmit, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+
+            if (response.data.userId) {
+                setUserId(response.data.userId);
+                setCurrentStep('verification');
+                toast.success("Application submitted successfully! Please check your email for verification code.");
+            }
+        } catch (error) {
+            console.error("Error submitting application:", error);
+            toast.error("Failed to submit application. Please try again.");
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        if (!userId || !otpCode) return;
+        try {
+            await Api.post("/tutor/verify-email", { userId, otpCode });
+            toast.success("Email verified successfully!");
+            setCurrentStep('documents');
+        } catch (error) {
+            console.error("Error verifying OTP:", error);
+            toast.error("Invalid or expired OTP. Please try again.");
+        }
+    };
+
     return (
-        <div className="flex flex-col justify-center items-center">
-            {/* Hero Section */}
-            <section className="bg-gradient-to-b from-red-50 via-red-50/50 to-white w-full -mt-[70px]">
-                <div className="container max-w-6xl mx-auto px-4 pb-24 relative pt-[120px]">
-                    <div className="text-center max-w-3xl mx-auto">
-                        <span className="bg-red-100 text-red-600 px-4 py-2 rounded-full text-sm font-semibold mb-6 inline-block">
-                            Join Our Teaching Community
-                        </span>
-                        <h1 className="text-5xl md:text-6xl font-bold mb-8 bg-gradient-to-r from-red-600 to-red-800 bg-clip-text text-transparent">
-                            成为英语老师
-                            <span className="block mt-3">Become an English Tutor</span>
-                        </h1>
-                        <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                            加入我们的教师团队，开启您的教学之旅
-                            <span className="block mt-2">Join our teaching community and start your tutoring journey</span>
-                        </p>
+        <div className="min-h-screen bg-gradient-to-b from-red-50 via-red-50/50 to-white">
+            <div className="container max-w-6xl mx-auto px-4 py-16">
+                <div className="max-w-3xl mx-auto">
+                    <h1 className="text-4xl md:text-5xl font-bold mb-2">
+                        成为英语老师
+                        <span className="block text-2xl mt-2 text-gray-600">Become an English Tutor</span>
+                    </h1>
+
+                    {/* Progress Steps */}
+                    <div className="flex justify-between items-center mb-12 mt-8">
+                        {APPLICATION_STEPS.map((step, index) => (
+                            <div key={step.id} className="flex items-center">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${APPLICATION_STEPS.findIndex(s => s.id === currentStep) > index
+                                    ? 'bg-red-500 text-white'
+                                    : APPLICATION_STEPS.findIndex(s => s.id === currentStep) === index
+                                        ? 'bg-red-100 text-red-500 border-2 border-red-500'
+                                        : 'bg-gray-100 text-gray-400'
+                                    }`}>
+                                    {index + 1}
+                                </div>
+                                {index < APPLICATION_STEPS.length - 1 && (
+                                    <div className={`w-16 h-1 mx-2 ${APPLICATION_STEPS.findIndex(s => s.id === currentStep) > index
+                                        ? 'bg-red-500'
+                                        : 'bg-gray-200'
+                                        }`} />
+                                )}
+                            </div>
+                        ))}
                     </div>
-                </div>
-            </section>
 
-            {/* How it Works */}
-            <section className="py-16 w-full">
-                <div className="container max-w-6xl mx-auto px-4">
-                    <h2 className="text-3xl font-bold mb-12">
-                        如何成为老师
-                        <span className="block text-xl mt-2 text-gray-600">How to Become a Tutor</span>
-                    </h2>
-
-                    <div className="grid md:grid-cols-3 gap-8">
-                        {/* Step 1 */}
-                        <div>
-                            <div className="bg-red-50 rounded-3xl p-12 mb-6 flex items-center justify-center">
-                                <div className="bg-red-500 rounded-full p-6">
-                                    <i className="fas fa-user-plus text-2xl text-white"></i>
-                                </div>
-                            </div>
-                            <h3 className="text-xl font-bold mb-3">1. 提交申请<br />Submit Application</h3>
-                            <p className="text-gray-600">填写您的个人信息和教学经验</p>
-                            <p className="text-sm text-gray-500 mt-1">Complete your profile with personal information and teaching experience</p>
-                        </div>
-
-                        {/* Step 2 */}
-                        <div>
-                            <div className="bg-blue-50 rounded-3xl p-12 mb-6 flex items-center justify-center">
-                                <div className="bg-blue-500 rounded-full p-6">
-                                    <i className="fas fa-check-circle text-2xl text-white"></i>
-                                </div>
-                            </div>
-                            <h3 className="text-xl font-bold mb-3">2. 资格审核<br />Verification Process</h3>
-                            <p className="text-gray-600">我们会审核您的资质和教学经验</p>
-                            <p className="text-sm text-gray-500 mt-1">We'll review your qualifications and teaching experience</p>
-                        </div>
-
-                        {/* Step 3 */}
-                        <div>
-                            <div className="bg-green-50 rounded-3xl p-12 mb-6 flex items-center justify-center">
-                                <div className="bg-green-500 rounded-full p-6">
-                                    <i className="fas fa-graduation-cap text-2xl text-white"></i>
-                                </div>
-                            </div>
-                            <h3 className="text-xl font-bold mb-3">3. 开始教学<br />Start Teaching</h3>
-                            <p className="text-gray-600">创建您的课程表并开始接收学生</p>
-                            <p className="text-sm text-gray-500 mt-1">Create your schedule and start accepting students</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Application Form */}
-            <section className="py-16 w-full bg-gray-50">
-                <div className="container max-w-3xl mx-auto px-4">
-                    <h2 className="text-3xl font-bold mb-8 text-center">
-                        申请表
-                        <span className="block text-xl mt-2 text-gray-600">Application Form</span>
-                    </h2>
-
+                    {/* Step Content */}
                     <div className="bg-white rounded-2xl shadow-lg p-8">
-                        <form className="space-y-6">
-                            <div className="grid md:grid-cols-2 gap-6">
-                                {/* Name Field */}
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        名字 First Name
-                                    </label>
-                                    <Input
-                                        type="text"
-                                        placeholder="Enter your full name"
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                        required
-                                    />
-                                </div>
-
-                                {/* Email Field */}
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        姓氏 Last Name
-                                    </label>
-                                    <Input
-                                        type="text"
-                                        placeholder="Enter your last name"
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Email Field */}
-                            <div className="space-y-2">
-                                <label className="block text-sm font-medium text-gray-700">
-                                    电子邮件 Email
-                                </label>
-                                <Input
-                                    type="email"
-                                    placeholder="Enter your email"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                    required
-                                />
-                            </div>
-
-                            {/* Password Field */}
-                            <div className="space-y-2">
-                                <label className="block text-sm font-medium text-gray-700">
-                                    密码 Password
-                                </label>
-                                <Input
-                                    type="password"
-                                    placeholder="Create a password"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                    required
-                                />
-                                <p className="text-sm text-gray-500">
-                                    账户审核通过后将使用此密码登录 This password will be used once your account is approved
-                                </p>
-                            </div>
-
-                            {/* Education Level Field */}
-                            <div className="space-y-2">
-                                <label className="block text-sm font-medium text-gray-700">
-                                    教育程度 Education Level
-                                </label>
-                                <select
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white"
-                                    required
-                                >
-                                    <option value="">Select education level</option>
-                                    <option value="bachelors">学士 Bachelor's Degree</option>
-                                    <option value="masters">硕士 Master's Degree</option>
-                                    <option value="phd">博士 PhD</option>
-                                    <option value="other">其他 Other</option>
-                                </select>
-                            </div>
-
-                            {/* Document Upload Field */}
-                            <div className="space-y-2">
-                                <label className="block text-sm font-medium text-gray-700">
-                                    教学资质证明 Teaching Credentials
-                                </label>
-                                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-red-500 transition-colors">
-                                    <div className="space-y-1 text-center">
-                                        <i className="fas fa-cloud-upload-alt text-4xl text-gray-400"></i>
-                                        <div className="flex text-sm text-gray-600">
-                                            <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-red-600 hover:text-red-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-red-500">
-                                                <span>Upload a file</span>
-                                                <input id="file-upload" name="file-upload" type="file" className="sr-only" accept=".pdf,.doc,.docx" required />
-                                            </label>
-                                            <p className="pl-1">or drag and drop</p>
+                        {currentStep === 'requirements' && (
+                            <div className="space-y-6">
+                                <h2 className="text-2xl font-bold mb-6">
+                                    申请材料
+                                    <span className="block text-lg mt-2 text-gray-600">Required Documents</span>
+                                </h2>
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3 p-4 bg-red-50 rounded-xl">
+                                        <span className="text-red-500 text-xl">📝</span>
+                                        <div>
+                                            <h3 className="font-semibold">基本信息 Basic Information</h3>
+                                            <p className="text-sm text-gray-600">姓名、邮箱、密码</p>
+                                            <p className="text-xs text-gray-500">Name, email, and password</p>
                                         </div>
-                                        <p className="text-xs text-gray-500">
-                                            PDF, DOC up to 10MB
-                                        </p>
                                     </div>
-                                </div>
-                            </div>
-
-                            {/* Specialized Options */}
-                            <div>
-                                <h3 className="text-lg font-semibold mb-4 pb-2 border-b">Specialized Options</h3>
-
-                                <div className="grid md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="block text-sm text-gray-700">
-                                            课程时长 Duration
-                                        </label>
-                                        <select
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white"
-                                        >
-                                            <option value="60">60 minutes</option>
-                                            <option value="90">90 minutes</option>
-                                            <option value="120">120 minutes</option>
-                                        </select>
+                                    <div className="flex items-center gap-3 p-4 bg-red-50 rounded-xl">
+                                        <span className="text-red-500 text-xl">🎓</span>
+                                        <div>
+                                            <h3 className="font-semibold">教育背景 Education</h3>
+                                            <p className="text-sm text-gray-600">学历证书、教学经验</p>
+                                            <p className="text-xs text-gray-500">Degree certificate and teaching experience</p>
+                                        </div>
                                     </div>
-                                    <div className="space-y-2 col-span-1">
-                                        <label className="block text-sm text-gray-700">
-                                            价格 Price (USD)
-                                        </label>
-                                        <div className="relative">
-                                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-600">$</span>
-                                            <Input
-                                                type="number"
-                                                min="10"
-                                                placeholder="45"
-                                                className="w-full pl-8 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                            />
+                                    <div className="flex items-center gap-3 p-4 bg-red-50 rounded-xl">
+                                        <span className="text-red-500 text-xl">⏰</span>
+                                        <div>
+                                            <h3 className="font-semibold">课程安排 Schedule</h3>
+                                            <p className="text-sm text-gray-600">每周可授课时间</p>
+                                            <p className="text-xs text-gray-500">Weekly teaching schedule</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 p-4 bg-red-50 rounded-xl">
+                                        <span className="text-red-500 text-xl">📸</span>
+                                        <div>
+                                            <h3 className="font-semibold">个人照片 Photo</h3>
+                                            <p className="text-sm text-gray-600">清晰的个人头像</p>
+                                            <p className="text-xs text-gray-500">Clear profile photo</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 p-4 bg-red-50 rounded-xl">
+                                        <span className="text-red-500 text-xl">📄</span>
+                                        <div>
+                                            <h3 className="font-semibold">教学文件 Documents</h3>
+                                            <p className="text-sm text-gray-600">教学证书、学历证明等</p>
+                                            <p className="text-xs text-gray-500">Teaching certificates, degree proof, etc.</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 p-4 bg-red-50 rounded-xl">
+                                        <span className="text-red-500 text-xl">✉️</span>
+                                        <div>
+                                            <h3 className="font-semibold">邮箱验证 Email Verification</h3>
+                                            <p className="text-sm text-gray-600">验证码确认</p>
+                                            <p className="text-xs text-gray-500">Verification code confirmation</p>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-
-                            {/* Availability */}
-                            <div>
-                                <h4 className="font-medium mb-3">可用时间 Availability*</h4>
-                                <div className="grid md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="block text-sm text-gray-700">
-                                            工作时间 Schedule
-                                        </label>
-                                        <Input
-                                            type="text"
-                                            placeholder="E.g., Mon-Fri: 9AM-6PM"
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="block text-sm text-gray-700">
-                                            时区 Timezone
-                                        </label>
-                                        <select
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white"
-                                            required
-                                        >
-                                            <option value="">Select your timezone</option>
-                                            <option value="EST">Eastern Time (EST/EDT)</option>
-                                            <option value="CST">Central Time (CST/CDT)</option>
-                                            <option value="MST">Mountain Time (MST/MDT)</option>
-                                            <option value="PST">Pacific Time (PST/PDT)</option>
-                                            <option value="GMT">Greenwich Mean Time (GMT)</option>
-                                            <option value="CET">Central European Time (CET)</option>
-                                            <option value="CST-Asia">China Standard Time (CST)</option>
-                                            <option value="JST">Japan Standard Time (JST)</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* About You Section */}
-                            <div>
-                                <h3 className="text-lg font-semibold mb-4 pb-2 border-b">关于你 About You</h3>
-
-                                <div className="space-y-2 mb-6">
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        个人介绍 About Me*
-                                    </label>
-                                    <textarea
-                                        rows={6}
-                                        placeholder="Describe your teaching experience, approach, and what students can expect from your lessons..."
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
-                                        required
-                                    ></textarea>
-                                    <p className="text-sm text-gray-500">
-                                        写一段有吸引力的个人介绍，描述您的教学风格和专长 (200-300字)
-                                        <span className="block mt-1">Write an engaging introduction about your teaching style and expertise (200-300 words)</span>
-                                    </p>
-                                </div>
-
-                                <div className="space-y-2 mb-6">
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        教学风格 Teaching Style*
-                                    </label>
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                        {["Conversational", "Interactive", "Student-centered", "Grammar-focused",
-                                            "Visual learning", "Task-based", "Project-based", "Structured curriculum",
-                                            "Flexible approach", "Immersive"].map((style) => (
-                                                <label key={style} className="relative flex items-center bg-gray-50 px-3 py-2 rounded-lg cursor-pointer hover:bg-gray-100">
-                                                    <input type="checkbox" className="sr-only peer" />
-                                                    <span className="peer-checked:text-red-600 peer-checked:font-medium text-sm">{style}</span>
-                                                    <span className="absolute inset-0 border-2 border-transparent peer-checked:border-red-500 rounded-lg pointer-events-none"></span>
-                                                </label>
-                                            ))}
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        教学资料 Teaching Materials
-                                    </label>
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                        {["Custom PDF worksheets", "Interactive exercises", "Audio materials",
-                                            "Video lessons", "Textbooks", "Online platforms", "Authentic materials",
-                                            "Practice tests", "Flashcards", "Games"].map((material) => (
-                                                <label key={material} className="relative flex items-center bg-gray-50 px-3 py-2 rounded-lg cursor-pointer hover:bg-gray-100">
-                                                    <input type="checkbox" className="sr-only peer" />
-                                                    <span className="peer-checked:text-red-600 peer-checked:font-medium text-sm">{material}</span>
-                                                    <span className="absolute inset-0 border-2 border-transparent peer-checked:border-red-500 rounded-lg pointer-events-none"></span>
-                                                </label>
-                                            ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Terms and Submission */}
-                            <div className="pt-6 border-t border-gray-200">
-                                <div className="flex items-start mb-6">
-                                    <div className="flex items-center h-5">
-                                        <input
-                                            id="terms"
-                                            type="checkbox"
-                                            className="w-4 h-4 border border-gray-300 rounded bg-white focus:ring-3 focus:ring-red-500"
-                                            required
-                                        />
-                                    </div>
-                                    <label htmlFor="terms" className="ml-2 text-sm text-gray-600">
-                                        我已阅读并同意<a href="#" className="text-red-600 hover:underline">服务条款</a>和<a href="#" className="text-red-600 hover:underline">隐私政策</a>
-                                        <span className="block mt-1">I have read and agree to the <a href="#" className="text-red-600 hover:underline">Terms of Service</a> and <a href="#" className="text-red-600 hover:underline">Privacy Policy</a></span>
-                                    </label>
-                                </div>
-
                                 <Button
-                                    type="submit"
-                                    className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white text-lg py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                                    onClick={() => setCurrentStep('personal-info')}
+                                    className="w-full bg-red-500 hover:bg-red-600 text-white rounded-full py-3 text-lg mt-8"
                                 >
-                                    提交申请 Submit Application
+                                    开始申请 Start Application
                                 </Button>
                             </div>
-                        </form>
-                    </div>
-                </div>
-            </section>
+                        )}
 
-            {/* Tutor Success Stories - New Section */}
-            <section className="py-16 w-full bg-white">
-                <div className="container max-w-6xl mx-auto px-4">
-                    <h2 className="text-3xl font-bold mb-12 text-center">
-                        教师成功故事
-                        <span className="block text-xl mt-2 text-gray-600">Tutor Success Stories</span>
-                    </h2>
-
-                    <div className="grid md:grid-cols-3 gap-8">
-                        {[
-                            {
-                                name: "David Chen",
-                                image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e",
-                                story: "从加入平台到现在已经一年了，已经积累了超过300名学生，每月收入稳定。",
-                                translation: "I've been on the platform for a year and have taught over 300 students with a steady monthly income.",
-                                students: 300,
-                                rating: 4.9
-                            },
-                            {
-                                name: "Emily Wang",
-                                image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80",
-                                story: "作为一名兼职教师，我每周花10小时教学，额外增加了30%的收入。",
-                                translation: "As a part-time tutor, I spend 10 hours a week teaching and have increased my income by 30%.",
-                                students: 180,
-                                rating: 4.8
-                            },
-                            {
-                                name: "Michael Liu",
-                                image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
-                                story: "教学不仅是一份工作，更是我与世界各地学生建立联系的方式。",
-                                translation: "Teaching is not just a job but a way for me to connect with students from around the world.",
-                                students: 250,
-                                rating: 4.9
-                            }
-                        ].map((story, index) => (
-                            <div key={index} className="bg-gray-50 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
-                                <div className="flex items-center gap-4 mb-4">
-                                    <img
-                                        src={story.image}
-                                        alt={story.name}
-                                        className="w-16 h-16 rounded-full object-cover"
-                                    />
+                        {currentStep === 'personal-info' && (
+                            <form onSubmit={handleFormSubmit} className="space-y-6">
+                                <h2 className="text-2xl font-bold mb-6">
+                                    个人信息
+                                    <span className="block text-lg mt-2 text-gray-600">Personal Information</span>
+                                </h2>
+                                <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <h3 className="font-semibold text-lg">{story.name}</h3>
-                                        <div className="flex items-center">
-                                            <i className="fas fa-star text-yellow-400 mr-1 text-sm"></i>
-                                            <span className="text-sm text-gray-600">{story.rating} Rating</span>
-                                        </div>
+                                        <label className="block text-sm font-medium mb-1">名字 First Name</label>
+                                        <Input
+                                            name="firstName"
+                                            value={formData.firstName}
+                                            onChange={handleInputChange}
+                                            required
+                                            className="w-full rounded-lg border-gray-300 focus:border-red-500 focus:ring-red-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">姓氏 Last Name</label>
+                                        <Input
+                                            name="lastName"
+                                            value={formData.lastName}
+                                            onChange={handleInputChange}
+                                            required
+                                            className="w-full rounded-lg border-gray-300 focus:border-red-500 focus:ring-red-500"
+                                        />
                                     </div>
                                 </div>
-                                <p className="text-gray-700 mb-2">{story.story}</p>
-                                <p className="text-sm text-gray-600 mb-4">{story.translation}</p>
-                                <div className="flex items-center text-sm text-gray-600">
-                                    <i className="fas fa-user-graduate mr-2"></i>
-                                    <span>{story.students}+ Students Taught</span>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">邮箱 Email</label>
+                                    <Input
+                                        type="email"
+                                        name="email"
+                                        value={formData.email}
+                                        onChange={handleInputChange}
+                                        required
+                                        className="w-full rounded-lg border-gray-300 focus:border-red-500 focus:ring-red-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">密码 Password</label>
+                                    <Input
+                                        type="password"
+                                        name="password"
+                                        value={formData.password}
+                                        onChange={handleInputChange}
+                                        required
+                                        className="w-full rounded-lg border-gray-300 focus:border-red-500 focus:ring-red-500"
+                                    />
+                                </div>
+                                <Button
+                                    type="submit"
+                                    className="w-full bg-red-500 hover:bg-red-600 text-white rounded-full py-3 text-lg mt-8"
+                                >
+                                    下一步 Next Step
+                                </Button>
+                            </form>
+                        )}
+
+                        {currentStep === 'education' && (
+                            <form onSubmit={handleFormSubmit} className="space-y-6">
+                                <h2 className="text-2xl font-bold mb-6">
+                                    教育背景
+                                    <span className="block text-lg mt-2 text-gray-600">Education & Experience</span>
+                                </h2>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">学历 Education Level</label>
+                                    <select
+                                        name="educationLevel"
+                                        value={formData.educationLevel}
+                                        onChange={handleInputChange}
+                                        className="w-full rounded-lg border-gray-300 focus:border-red-500 focus:ring-red-500"
+                                        required
+                                    >
+                                        <option value="">请选择 Select education level</option>
+                                        <option value="bachelors">本科 Bachelor's Degree</option>
+                                        <option value="masters">硕士 Master's Degree</option>
+                                        <option value="phd">博士 PhD</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">教学风格 Teaching Style</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {["对话式 Conversational", "互动式 Interactive", "以学生为中心 Student-centered", "语法重点 Grammar-focused"].map((style) => (
+                                            <label key={style} className="flex items-center space-x-2">
+                                                <input
+                                                    type="checkbox"
+                                                    name="teachingStyle"
+                                                    value={style}
+                                                    onChange={(e) => {
+                                                        const currentStyles = formData.teachingStyle ? formData.teachingStyle.split(',') : [];
+                                                        if (e.target.checked) {
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                teachingStyle: [...currentStyles, style].join(',')
+                                                            }));
+                                                        } else {
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                teachingStyle: currentStyles.filter(s => s !== style).join(',')
+                                                            }));
+                                                        }
+                                                    }}
+                                                    className="rounded border-gray-300 text-red-500 focus:ring-red-500"
+                                                />
+                                                <span>{style}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">自我介绍 About Me</label>
+                                    <textarea
+                                        name="aboutMe"
+                                        value={formData.aboutMe}
+                                        onChange={handleInputChange}
+                                        className="w-full rounded-lg border-gray-300 focus:border-red-500 focus:ring-red-500"
+                                        rows={4}
+                                        required
+                                    />
+                                </div>
+                                <Button
+                                    type="submit"
+                                    className="w-full bg-red-500 hover:bg-red-600 text-white rounded-full py-3 text-lg mt-8"
+                                >
+                                    下一步 Next Step
+                                </Button>
+                            </form>
+                        )}
+
+                        {currentStep === 'schedule' && (
+                            <form onSubmit={handleFormSubmit} className="space-y-6">
+                                <h2 className="text-2xl font-bold mb-6">
+                                    课程安排
+                                    <span className="block text-lg mt-2 text-gray-600">Teaching Schedule</span>
+                                </h2>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">时区 Timezone</label>
+                                    <select
+                                        name="timezone"
+                                        value={formData.timezone}
+                                        onChange={handleInputChange}
+                                        className="w-full rounded-lg border-gray-300 focus:border-red-500 focus:ring-red-500"
+                                        required
+                                    >
+                                        {CHINESE_TIMEZONES.map((timezone) => (
+                                            <option key={timezone.value} value={timezone.value}>
+                                                {timezone.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">课程时长 Lesson Duration</label>
+                                    <select
+                                        name="lessonDuration"
+                                        value={formData.lessonDuration}
+                                        onChange={handleInputChange}
+                                        className="w-full rounded-lg border-gray-300 focus:border-red-500 focus:ring-red-500"
+                                        required
+                                    >
+                                        <option value="30">30分钟 30 minutes</option>
+                                        <option value="45">45分钟 45 minutes</option>
+                                        <option value="60">60分钟 60 minutes</option>
+                                        <option value="90">90分钟 90 minutes</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-4">
+                                    <h3 className="font-semibold">每周课程安排 Weekly Schedule</h3>
+                                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
+                                        <div key={day} className="grid grid-cols-3 gap-2 items-center">
+                                            <span className="font-medium">{day}</span>
+                                            <Input
+                                                type="time"
+                                                value={formData.schedule.find(s => s.day === day)?.startTime || ''}
+                                                onChange={(e) => handleScheduleChange(day, 'startTime', e.target.value)}
+                                                className="w-full rounded-lg border-gray-300 focus:border-red-500 focus:ring-red-500"
+                                            />
+                                            <Input
+                                                type="time"
+                                                value={formData.schedule.find(s => s.day === day)?.endTime || ''}
+                                                onChange={(e) => handleScheduleChange(day, 'endTime', e.target.value)}
+                                                className="w-full rounded-lg border-gray-300 focus:border-red-500 focus:ring-red-500"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                                <Button
+                                    type="submit"
+                                    className="w-full bg-red-500 hover:bg-red-600 text-white rounded-full py-3 text-lg mt-8"
+                                >
+                                    下一步 Next Step
+                                </Button>
+                            </form>
+                        )}
+
+                        {currentStep === 'avatar' && (
+                            <div className="space-y-6">
+                                <h2 className="text-2xl font-bold mb-6">
+                                    头像上传
+                                    <span className="block text-lg mt-2 text-gray-600">Profile Photo</span>
+                                </h2>
+                                <div className="space-y-4">
+                                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => handleFileChange(e, 'avatar')}
+                                            className="hidden"
+                                            id="avatar-upload"
+                                        />
+                                        <label htmlFor="avatar-upload" className="cursor-pointer">
+                                            {avatar ? (
+                                                <img
+                                                    src={URL.createObjectURL(avatar)}
+                                                    alt="Preview"
+                                                    className="mx-auto h-32 w-32 object-cover rounded-full"
+                                                />
+                                            ) : (
+                                                <div className="text-gray-500">
+                                                    点击上传头像 Click to upload profile photo
+                                                </div>
+                                            )}
+                                        </label>
+                                    </div>
+                                    <Button
+                                        onClick={() => setCurrentStep('documents')}
+                                        className="w-full bg-red-500 hover:bg-red-600 text-white rounded-full py-3 text-lg mt-8"
+                                    >
+                                        下一步 Next Step
+                                    </Button>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
+                        )}
 
-            {/* FAQ Section - New */}
-            <section className="py-16 w-full bg-gray-50">
-                <div className="container max-w-4xl mx-auto px-4">
-                    <h2 className="text-3xl font-bold mb-12 text-center">
-                        常见问题
-                        <span className="block text-xl mt-2 text-gray-600">Frequently Asked Questions</span>
-                    </h2>
-
-                    <div className="space-y-6">
-                        {[
-                            {
-                                question: "成为老师需要哪些资格？",
-                                questionEn: "What qualifications do I need to become a tutor?",
-                                answer: "您需要拥有相关的教学资质（如TEFL, TESOL等），或相关领域的学位，以及至少1年的教学经验。",
-                                answerEn: "You need relevant teaching qualifications (such as TEFL, TESOL), or a degree in a related field, and at least 1 year of teaching experience."
-                            },
-                            {
-                                question: "我如何获得第一批学生？",
-                                questionEn: "How do I get my first students?",
-                                answer: "完成您的个人资料后，您将出现在学生的搜索结果中。提供试课和有竞争力的价格可以帮助您获得初始评价。",
-                                answerEn: "After completing your profile, you'll appear in student search results. Offering trial lessons and competitive rates can help you get initial reviews."
-                            },
-                            {
-                                question: "我可以设置我自己的时间表和价格吗？",
-                                questionEn: "Can I set my own schedule and rates?",
-                                answer: "是的，您可以完全控制您的可用时间和课程费率。您也可以随时调整这些设置。",
-                                answerEn: "Yes, you have complete control over your availability and lesson rates. You can adjust these settings at any time."
-                            },
-                            {
-                                question: "平台收取多少佣金？",
-                                questionEn: "How much commission does the platform take?",
-                                answer: "我们收取15%的服务费，用于平台维护、支付处理和营销，帮助您获得更多学生。",
-                                answerEn: "We charge a 15% service fee for platform maintenance, payment processing, and marketing to help you get more students."
-                            }
-                        ].map((faq, index) => (
-                            <div key={index} className="bg-white p-6 rounded-lg shadow-sm">
-                                <h3 className="font-semibold text-lg mb-2">
-                                    {faq.question}
-                                    <span className="block text-sm font-normal mt-1 text-gray-600">{faq.questionEn}</span>
-                                </h3>
-                                <p className="text-gray-700">
-                                    {faq.answer}
-                                    <span className="block text-sm mt-1 text-gray-600">{faq.answerEn}</span>
-                                </p>
+                        {currentStep === 'documents' && (
+                            <div className="space-y-6">
+                                <h2 className="text-2xl font-bold mb-6">
+                                    文件上传
+                                    <span className="block text-lg mt-2 text-gray-600">Documents</span>
+                                </h2>
+                                <div className="space-y-4">
+                                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center">
+                                        <input
+                                            type="file"
+                                            accept=".pdf,.doc,.docx"
+                                            onChange={(e) => handleFileChange(e, 'document')}
+                                            className="hidden"
+                                            id="document-upload"
+                                            multiple
+                                        />
+                                        <label htmlFor="document-upload" className="cursor-pointer">
+                                            <div className="text-gray-500">
+                                                点击上传教学文件 Click to upload teaching documents
+                                            </div>
+                                        </label>
+                                    </div>
+                                    {documents.length > 0 && (
+                                        <div className="space-y-2">
+                                            <h3 className="font-medium">已选文件 Selected Files:</h3>
+                                            <ul className="list-disc pl-5">
+                                                {documents.map((doc, index) => (
+                                                    <li key={index}>{doc.name}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                    <Button
+                                        onClick={() => setCurrentStep('verification')}
+                                        className="w-full bg-red-500 hover:bg-red-600 text-white rounded-full py-3 text-lg mt-8"
+                                    >
+                                        下一步 Next Step
+                                    </Button>
+                                </div>
                             </div>
-                        ))}
+                        )}
+
+                        {currentStep === 'verification' && (
+                            <div className="space-y-6">
+                                <h2 className="text-2xl font-bold mb-6">
+                                    邮箱验证
+                                    <span className="block text-lg mt-2 text-gray-600">Email Verification</span>
+                                </h2>
+                                <p className="text-gray-600">
+                                    我们已向您的邮箱发送了验证码。请输入验证码以完成申请。
+                                    <span className="block text-sm mt-1">
+                                        We've sent a verification code to your email. Please enter it below to complete your application.
+                                    </span>
+                                </p>
+                                <div className="space-y-4">
+                                    <Input
+                                        type="text"
+                                        value={otpCode}
+                                        onChange={(e) => setOtpCode(e.target.value)}
+                                        placeholder="请输入6位验证码 Enter 6-digit code"
+                                        maxLength={6}
+                                        className="w-full rounded-lg border-gray-300 focus:border-red-500 focus:ring-red-500"
+                                    />
+                                    <Button
+                                        onClick={handleVerifyOtp}
+                                        disabled={!otpCode || otpCode.length !== 6}
+                                        className="w-full bg-red-500 hover:bg-red-600 text-white rounded-full py-3 text-lg mt-8"
+                                    >
+                                        验证邮箱 Verify Email
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
-            </section>
+            </div>
         </div>
     );
 } 
