@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useToast } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 const AdminLayout: React.FC = () => {
     const [collapsed, setCollapsed] = useState(false);
@@ -9,7 +9,6 @@ const AdminLayout: React.FC = () => {
     const [pageTitle, setPageTitle] = useState('');
     const location = useLocation();
     const navigate = useNavigate();
-    const toast = useToast();
 
     useEffect(() => {
         // Set page title based on current route
@@ -76,8 +75,8 @@ const AdminLayout: React.FC = () => {
                                 key={item.path}
                                 variant={location.pathname.includes(item.path) ? 'default' : 'ghost'}
                                 className={`w-full justify-start mb-1 ${location.pathname.includes(item.path)
-                                        ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                                        : 'text-gray-600 hover:bg-gray-100'
+                                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                    : 'text-gray-600 hover:bg-gray-100'
                                     }`}
                                 onClick={() => navigate(item.path)}
                             >
@@ -103,8 +102,8 @@ const AdminLayout: React.FC = () => {
                                 key={item.path}
                                 variant={location.pathname.includes(item.path) ? 'default' : 'ghost'}
                                 className={`w-full justify-start mb-1 ${location.pathname.includes(item.path)
-                                        ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                                        : 'text-gray-600 hover:bg-gray-100'
+                                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                    : 'text-gray-600 hover:bg-gray-100'
                                     }`}
                                 onClick={() => navigate(item.path)}
                             >

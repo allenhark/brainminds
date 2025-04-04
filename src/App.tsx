@@ -23,11 +23,12 @@ import TutorStudents from './admin/tutors/TutorStudents'
 import CreateTutor from './admin/tutors/CreateTutor'
 
 // UI Components Provider
-import { ToastProvider } from './components/ui/use-toast'
+import { Toaster } from 'react-hot-toast'
 
 function App() {
   return (
-    <ToastProvider>
+    <>
+      <Toaster position="top-right" />
       <Routes>
         {/* Main site routes */}
         <Route element={<Layout />}>
@@ -53,7 +54,7 @@ function App() {
           <Route path="messaging" element={<MessagingManagement />} />
         </Route>
       </Routes>
-    </ToastProvider>
+    </>
   )
 }
 
