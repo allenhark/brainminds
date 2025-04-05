@@ -47,7 +47,7 @@ const TutorMessaging: React.FC = () => {
     useEffect(() => {
         // Initialize websocket connection when component mounts
         const userId = '1'; // This would come from authentication context
-        wsService.connect(userId, 'tutor');
+        wsService.connect(userId, 'TUTOR');
 
         // Load mock data for demonstration
         setTimeout(() => {
@@ -61,7 +61,7 @@ const TutorMessaging: React.FC = () => {
         }, 500);
 
         // Subscribe to message events
-        const unsubscribeMessage = wsService.onMessage((data) => {
+        const unsubscribeMessage = wsService.on('receive_message', (data) => {
             // Add message to the chat if it's from the currently selected student
             if (selectedStudent && data.from === selectedStudent.id.toString()) {
                 const newMessage = {
@@ -74,7 +74,7 @@ const TutorMessaging: React.FC = () => {
                 setMessages(prev => [...prev, newMessage]);
 
                 // Mark message as read since we're viewing this conversation
-                wsService.markMessagesAsRead([data.messageId], data.from);
+                wsService.markMessagesAsRead(data.from, data.chatRoomId, [data.messageId]);
             } else {
                 // Update unread count for the student
                 setStudents(prevStudents =>
@@ -88,7 +88,7 @@ const TutorMessaging: React.FC = () => {
         });
 
         // Subscribe to typing indicator
-        const unsubscribeTyping = wsService.onTyping((data) => {
+        const unsubscribeTyping = wsService.on('typing_indicator', (data) => {
             // Update typing indicator for selected student
             if (selectedStudent && data.from === selectedStudent.id.toString()) {
                 // You could add a typing indicator state here
@@ -156,6 +156,7 @@ const TutorMessaging: React.FC = () => {
         // Send via WebSocket
         wsService.sendMessage(
             selectedStudent.id.toString(),
+            1, // chatRoomId - this should be a real chat room ID
             messageText
         );
 
@@ -169,13 +170,13 @@ const TutorMessaging: React.FC = () => {
         } else {
             // Send typing indicator
             if (selectedStudent) {
-                wsService.sendTypingIndicator(selectedStudent.id.toString(), true);
+                wsService.sendTypingIndicator(selectedStudent.id.toString(), 1, true);
 
                 // Clear typing indicator after delay
                 if (typingTimeout.current) clearTimeout(typingTimeout.current);
                 typingTimeout.current = setTimeout(() => {
                     if (selectedStudent) {
-                        wsService.sendTypingIndicator(selectedStudent.id.toString(), false);
+                        wsService.sendTypingIndicator(selectedStudent.id.toString(), 1, false);
                     }
                 }, 2000);
             }

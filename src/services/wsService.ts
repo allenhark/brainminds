@@ -1,21 +1,32 @@
 import { io, Socket } from 'socket.io-client';
 
-class WebSocketService {
+export class WebSocketService {
     private socket: Socket | null = null;
     private userId: string | null = null;
-    private userRole: 'tutor' | 'student' | 'admin' | null = null;
+    private userRole: 'TUTOR' | 'STUDENT' | 'ADMIN' | null = null;
+    private static instance: WebSocketService;
 
     // Event listeners
-    private messageListeners: ((data: any) => void)[] = [];
-    private typingListeners: ((data: any) => void)[] = [];
-    private readReceiptListeners: ((data: any) => void)[] = [];
-    private userStatusListeners: ((data: any) => void)[] = [];
+    private eventListeners: Record<string, ((data: any) => void)[]> = {
+        'receive_message': [],
+        'typing_indicator': [],
+        'messages_read': [],
+        'user_status': [],
+        'notification': []
+    };
 
-    constructor() {
+    private constructor() {
         // Initialize but don't connect yet
     }
 
-    connect(userId: string, userRole: 'tutor' | 'student' | 'admin') {
+    public static getInstance(): WebSocketService {
+        if (!WebSocketService.instance) {
+            WebSocketService.instance = new WebSocketService();
+        }
+        return WebSocketService.instance;
+    }
+
+    connect(userId: string, userRole: 'TUTOR' | 'STUDENT' | 'ADMIN') {
         if (this.socket) {
             this.disconnect();
         }
@@ -32,12 +43,15 @@ class WebSocketService {
         this.userRole = userRole;
 
         this.socket.on('connect', this.handleConnect.bind(this));
-        this.socket.on('receive_message', this.handleReceiveMessage.bind(this));
-        this.socket.on('typing_indicator', this.handleTypingIndicator.bind(this));
-        this.socket.on('messages_read', this.handleMessagesRead.bind(this));
-        this.socket.on('user_status', this.handleUserStatus.bind(this));
         this.socket.on('disconnect', this.handleDisconnect.bind(this));
         this.socket.on('connect_error', this.handleConnectError.bind(this));
+
+        // Register event handlers
+        Object.keys(this.eventListeners).forEach(event => {
+            this.socket?.on(event, (data: any) => {
+                this.triggerEvent(event, data);
+            });
+        });
     }
 
     private handleConnect() {
@@ -50,22 +64,6 @@ class WebSocketService {
         });
 
         console.log('WebSocket connected');
-    }
-
-    private handleReceiveMessage(data: any) {
-        this.messageListeners.forEach(listener => listener(data));
-    }
-
-    private handleTypingIndicator(data: any) {
-        this.typingListeners.forEach(listener => listener(data));
-    }
-
-    private handleMessagesRead(data: any) {
-        this.readReceiptListeners.forEach(listener => listener(data));
-    }
-
-    private handleUserStatus(data: any) {
-        this.userStatusListeners.forEach(listener => listener(data));
     }
 
     private handleDisconnect() {
@@ -82,70 +80,65 @@ class WebSocketService {
         }, 5000);
     }
 
+    private triggerEvent(event: string, data: any) {
+        const listeners = this.eventListeners[event] || [];
+        listeners.forEach(listener => listener(data));
+    }
+
     // Public methods for sending messages
-    sendMessage(recipientId: string, message: string) {
+    sendMessage(to: string, chatRoomId: number, message: string, messageId?: number) {
         if (!this.socket || !this.socket.connected) {
             console.error('Cannot send message: Socket not connected');
             return false;
         }
 
         this.socket.emit('send_message', {
-            to: recipientId,
+            to,
+            chatRoomId,
             message,
+            messageId,
             timestamp: new Date().toISOString()
         });
 
         return true;
     }
 
-    sendTypingIndicator(recipientId: string, isTyping: boolean) {
+    sendTypingIndicator(to: string, chatRoomId: number, isTyping: boolean) {
         if (!this.socket || !this.socket.connected) return false;
 
         this.socket.emit('typing', {
-            to: recipientId,
+            to,
+            chatRoomId,
             isTyping
         });
 
         return true;
     }
 
-    markMessagesAsRead(messageIds: string[], fromUserId: string) {
+    markMessagesAsRead(from: string, chatRoomId: number, messageIds: number[]) {
         if (!this.socket || !this.socket.connected) return false;
 
         this.socket.emit('mark_read', {
-            messageIds,
-            from: fromUserId
+            from,
+            chatRoomId,
+            messageIds
         });
 
         return true;
     }
 
-    // Subscribe to events
-    onMessage(callback: (data: any) => void) {
-        this.messageListeners.push(callback);
-        return () => {
-            this.messageListeners = this.messageListeners.filter(cb => cb !== callback);
-        };
-    }
+    // Subscribe to events with generic handler
+    on(event: string, callback: (data: any) => void): () => void {
+        if (!this.eventListeners[event]) {
+            this.eventListeners[event] = [];
+        }
 
-    onTyping(callback: (data: any) => void) {
-        this.typingListeners.push(callback);
-        return () => {
-            this.typingListeners = this.typingListeners.filter(cb => cb !== callback);
-        };
-    }
+        this.eventListeners[event].push(callback);
 
-    onReadReceipt(callback: (data: any) => void) {
-        this.readReceiptListeners.push(callback);
         return () => {
-            this.readReceiptListeners = this.readReceiptListeners.filter(cb => cb !== callback);
-        };
-    }
-
-    onUserStatus(callback: (data: any) => void) {
-        this.userStatusListeners.push(callback);
-        return () => {
-            this.userStatusListeners = this.userStatusListeners.filter(cb => cb !== callback);
+            this.eventListeners[event] = this.eventListeners[event].filter(
+                cb => cb !== callback
+            );
         };
     }
 
@@ -166,6 +159,6 @@ class WebSocketService {
 }
 
 // Create a singleton instance
-const wsService = new WebSocketService();
+const wsService = WebSocketService.getInstance();
 
 export default wsService; 

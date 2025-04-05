@@ -22,8 +22,25 @@ import TutorSchedule from './admin/tutors/TutorSchedule'
 import TutorStudents from './admin/tutors/TutorStudents'
 import CreateTutor from './admin/tutors/CreateTutor'
 
+// Student Study imports
+import StudyLayout from './study/StudyLayout'
+import StudentDashboard from './study/Dashboard'
+import StudentTutors from './study/Tutors'
+import StudentMessages from './study/Messages'
+import Subscription from './study/Subscription'
+
 // UI Components Provider
 import { Toaster } from 'react-hot-toast'
+import TutorLayout from './tutor/TutorLayout'
+import TutorMessaging from './tutor/TutorMessaging'
+import TutorDashboard from './tutor/TutorDashboard'
+import TutorProfile from './tutor/TutorProfile'
+import TutorAvailability from './tutor/TutorAvailability'
+import TutorSessions from './tutor/TutorSessions'
+import TutorPayments from './tutor/TutorPayments'
+import MyTutorStudents from './tutor/TutorStudents'
+import TutorClassLinks from './tutor/TutorClassLinks'
+import Welcome from './pages/Welcome'
 
 function App() {
   return (
@@ -37,6 +54,7 @@ function App() {
           <Route path="/become-tutor" element={<BecomeATutor />} />
           <Route path="/login" element={<LoginSignup />} />
           <Route path="/tutor/:slug" element={<Tutor />} />
+          <Route path="/welcome" element={<Welcome />} />
         </Route>
 
         {/* Admin routes */}
@@ -52,6 +70,30 @@ function App() {
           <Route path="schedule" element={<ScheduleManagement />} />
           <Route path="payments" element={<PaymentsManagement />} />
           <Route path="messaging" element={<MessagingManagement />} />
+        </Route>
+
+        {/* Tutor routes */}
+        <Route path="/my-tutor" element={<TutorLayout />}>
+          <Route path="dashboard" element={<TutorDashboard />} />
+          <Route path="messages" element={<TutorMessaging />} />
+          <Route path="profile" element={<TutorProfile />} />
+          <Route path="students" element={<MyTutorStudents />} />
+          <Route path="sessions" element={<TutorSessions />} />
+          <Route path="availability" element={<TutorAvailability />} />
+          <Route path="payments" element={<TutorPayments />} />
+          <Route path="class-links" element={<TutorClassLinks />} />
+        </Route>
+
+        {/* Student Study routes */}
+        <Route path="/study" element={<StudyLayout />}>
+          <Route path="dashboard" element={<StudentDashboard />} />
+          <Route path="tutors" element={<StudentTutors />} />
+          <Route path="messages" element={<StudentMessages />} />
+          <Route path="subscription/:mode" element={<Subscription />} />
+          <Route path="subscription/new" element={<Subscription />} />
+          <Route path="schedule" element={<TutorSessions />} />
+          <Route path="payments" element={<PaymentsManagement />} />
+          <Route path="settings" element={<TutorProfile />} />
         </Route>
       </Routes>
     </>

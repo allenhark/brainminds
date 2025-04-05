@@ -171,13 +171,15 @@ const LoginSignup = () => {
             });
 
             // Use the UserContext login method instead of direct API call
-            await login(validatedData.email, validatedData.password);
+            const { success, user } = await login(validatedData.email, validatedData.password);
 
             // Ensure user data is refreshed
-            await refreshUser();
+            //await refreshUser();
 
-            // Navigate to home page
-            navigate('/');
+            console.log('login success', success, user);
+
+            // Redirect based on user role using React Router's navigate
+            navigate('/welcome');
 
         } catch (error) {
             if (error instanceof z.ZodError) {

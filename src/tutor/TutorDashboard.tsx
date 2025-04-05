@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
+import { tutorService } from '@/services/tutorService';
+import { messageService, type ChatRoom } from '@/services/messageService';
+import { formatDistanceToNow } from 'date-fns';
 
 interface SessionInfo {
     id: number;
@@ -21,7 +25,8 @@ interface MessageInfo {
 }
 
 const TutorDashboard: React.FC = () => {
-    // Normally these would come from API calls
+    const navigate = useNavigate();
+    const [loading, setLoading] = useState(true);
     const [metrics, setMetrics] = useState({
         activeStudents: 0,
         upcomingSessions: 0,
@@ -32,80 +37,97 @@ const TutorDashboard: React.FC = () => {
     const [upcomingSessions, setUpcomingSessions] = useState<SessionInfo[]>([]);
     const [recentMessages, setRecentMessages] = useState<MessageInfo[]>([]);
 
-    // Simulate fetching data
+    // Fetch real data from API
     useEffect(() => {
-        // This would be replaced with actual API calls
-        setTimeout(() => {
-            setMetrics({
-                activeStudents: 12,
-                upcomingSessions: 5,
-                unreadMessages: 3,
-                completedSessions: 48
-            });
+        const fetchDashboardData = async () => {
+            try {
+                setLoading(true);
 
-            setUpcomingSessions([
-                {
-                    id: 1,
-                    studentName: 'Emma Johnson',
-                    date: 'Today',
-                    time: '3:00 PM',
-                    status: 'upcoming',
-                    link: 'https://zoom.us/j/123456789'
-                },
-                {
-                    id: 2,
-                    studentName: 'Michael Chen',
-                    date: 'Tomorrow',
-                    time: '10:00 AM',
-                    status: 'upcoming',
-                    link: 'https://meet.google.com/abc-defg-hij'
-                },
-                {
-                    id: 3,
-                    studentName: 'Sofia Rodriguez',
-                    date: 'Apr 12, 2023',
-                    time: '5:30 PM',
-                    status: 'upcoming'
-                }
-            ]);
+                // Fetch tutor stats
+                const stats = await tutorService.getTutorStats();
 
-            setRecentMessages([
-                {
-                    id: 1,
-                    studentName: 'Emma Johnson',
-                    preview: 'Hi, I wanted to ask about the homework assignment...',
-                    time: '10 min ago',
-                    unread: true
-                },
-                {
-                    id: 2,
-                    studentName: 'Michael Chen',
-                    preview: 'Thank you for the session today! I learned a lot...',
-                    time: '2 hours ago',
-                    unread: true
-                },
-                {
-                    id: 3,
-                    studentName: 'Sofia Rodriguez',
-                    preview: "Can we reschedule tomorrow's session to 6 PM instead?",
-                    time: 'Yesterday',
-                    unread: false
-                }
-            ]);
-        }, 500);
+                // Fetch upcoming sessions
+                const sessions = await tutorService.getUpcomingSessions();
+
+                // Fetch recent messages
+                const messages: ChatRoom[] = await messageService.getChatRooms();
+
+                // Update metrics
+                setMetrics({
+                    activeStudents: stats.totalStudents || 0,
+                    upcomingSessions: sessions.length,
+                    unreadMessages: messages.reduce((count: number, msg: ChatRoom) => count + (msg.unreadCount || 0), 0),
+                    completedSessions: stats.completedSessions || 0
+                });
+
+                // Format upcoming sessions
+                const formattedSessions = sessions.map(session => ({
+                    id: session.id,
+                    studentName: `${session.student.firstName} ${session.student.lastName}`,
+                    date: formatSessionDate(session.startTime),
+                    time: formatSessionTime(session.startTime),
+                    status: session.status.toLowerCase() as 'upcoming' | 'completed' | 'cancelled',
+                    link: session.classLink
+                }));
+
+                setUpcomingSessions(formattedSessions);
+
+                // Format recent messages
+                const formattedMessages = messages.map(msg => ({
+                    id: msg.id,
+                    studentName: `${msg.student.firstName} ${msg.student.lastName}`,
+                    preview: msg.lastMessagePreview || 'No messages yet',
+                    time: formatDistanceToNow(new Date(msg.lastMessageAt || msg.createdAt), { addSuffix: true }),
+                    unread: (msg.unreadCount || 0) > 0
+                }));
+
+                setRecentMessages(formattedMessages);
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+                // You might want to show an error notification here
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDashboardData();
     }, []);
 
+    const formatSessionDate = (dateString: string) => {
+        const date = new Date(dateString);
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        if (date.toDateString() === today.toDateString()) {
+            return 'Today';
+        } else if (date.toDateString() === tomorrow.toDateString()) {
+            return 'Tomorrow';
+        } else {
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+    };
+
+    const formatSessionTime = (dateString: string) => {
+        const date = new Date(dateString);
+        return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    };
+
     const navigateToMessages = (messageId: number) => {
-        // Navigate to the specific message conversation
-        console.log(`Navigate to message ${messageId}`);
-        // This would use react-router-dom's navigate function in a real implementation
+        navigate(`/tutor/messages/${messageId}`);
     };
 
     const navigateToSession = (sessionId: number) => {
-        // Navigate to the session details
-        console.log(`Navigate to session ${sessionId}`);
-        // This would use react-router-dom's navigate function in a real implementation
+        navigate(`/tutor/sessions/${sessionId}`);
     };
+
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -193,7 +215,7 @@ const TutorDashboard: React.FC = () => {
                     )}
                 </CardContent>
                 <CardFooter>
-                    <Button variant="outline" onClick={() => window.location.href = '/tutor/sessions'}>
+                    <Button variant="outline" onClick={() => navigate('/tutor/sessions')}>
                         View All Sessions
                     </Button>
                 </CardFooter>
@@ -237,7 +259,7 @@ const TutorDashboard: React.FC = () => {
                     )}
                 </CardContent>
                 <CardFooter>
-                    <Button variant="outline" onClick={() => window.location.href = '/tutor/messages'}>
+                    <Button variant="outline" onClick={() => navigate('/tutor/messages')}>
                         View All Messages
                     </Button>
                 </CardFooter>

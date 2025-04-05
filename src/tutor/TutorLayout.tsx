@@ -16,8 +16,8 @@ const TutorLayout: React.FC = () => {
         const targetPath = itemPath.replace(/\/$/, '');
 
         // For root tutor path
-        if (targetPath === '/tutor') {
-            return currentPath === '/tutor';
+        if (targetPath === '/my-tutor') {
+            return currentPath === '/my-tutor';
         }
 
         // For other paths, ensure exact match
@@ -27,16 +27,18 @@ const TutorLayout: React.FC = () => {
     useEffect(() => {
         // Set page title based on current route
         const path = location.pathname;
-        if (path.includes('/profile')) {
+        if (path.includes('/my-tutor/profile')) {
             setPageTitle('Profile Management');
-        } else if (path.includes('/students')) {
+        } else if (path.includes('/my-tutor/students')) {
             setPageTitle('My Students');
-        } else if (path.includes('/sessions')) {
+        } else if (path.includes('/my-tutor/sessions')) {
             setPageTitle('Session Management');
-        } else if (path.includes('/messages')) {
+        } else if (path.includes('/my-tutor/messages')) {
             setPageTitle('Messages');
-        } else if (path.includes('/settings')) {
-            setPageTitle('Settings');
+        } else if (path.includes('/my-tutor/availability')) {
+            setPageTitle('Availability');
+        } else if (path.includes('/my-tutor/payments')) {
+            setPageTitle('Payments');
         } else {
             setPageTitle('Dashboard');
         }
@@ -46,24 +48,24 @@ const TutorLayout: React.FC = () => {
         {
             category: 'Teaching',
             items: [
-                { icon: 'far fa-users', label: 'My Students', path: '/tutor/students' },
-                { icon: 'far fa-calendar-alt', label: 'Sessions', path: '/tutor/sessions' },
-                { icon: 'far fa-video', label: 'Class Links', path: '/tutor/class-links' }
+                { icon: 'far fa-users', label: 'My Students', path: '/my-tutor/students' },
+                { icon: 'far fa-calendar-alt', label: 'Sessions', path: '/my-tutor/sessions' },
+                { icon: 'far fa-video', label: 'Class Links', path: '/my-tutor/class-links' }
             ]
         },
         {
             category: 'Communication',
             items: [
-                { icon: 'far fa-comment-dots', label: 'Messages', path: '/tutor/messages' },
-                { icon: 'far fa-bell', label: 'Notifications', path: '/tutor/notifications' }
+                { icon: 'far fa-comment-dots', label: 'Messages', path: '/my-tutor/messages' },
+                { icon: 'far fa-bell', label: 'Notifications', path: '/my-tutor/notifications' }
             ]
         },
         {
             category: 'Account',
             items: [
-                { icon: 'far fa-user-circle', label: 'Profile', path: '/tutor/profile' },
-                { icon: 'far fa-clock', label: 'Availability', path: '/tutor/availability' },
-                { icon: 'far fa-credit-card', label: 'Payments', path: '/tutor/payments' }
+                { icon: 'far fa-user-circle', label: 'Profile', path: '/my-tutor/profile' },
+                { icon: 'far fa-clock', label: 'Availability', path: '/my-tutor/availability' },
+                { icon: 'far fa-credit-card', label: 'Payments', path: '/my-tutor/payments' }
             ]
         }
     ];
@@ -85,7 +87,7 @@ const TutorLayout: React.FC = () => {
                     {/* Logo */}
                     <div className="flex items-center justify-between h-16 px-4 border-b">
                         {!collapsed && (
-                            <Link to="/tutor" className="flex items-center">
+                            <Link to="/my-tutor" className="flex items-center">
                                 <img src="/smalllogo.png" alt="BrainMinds" className="h-14" />
                             </Link>
                         )}
@@ -104,11 +106,11 @@ const TutorLayout: React.FC = () => {
                         <div className="space-y-2 mt-5 ">
                             <Button
                                 variant="ghost"
-                                className={`w-full flex outline-none shadow-none align-middle justify-start items-center py-2  ${isExactPath('/tutor')
+                                className={`w-full flex outline-none shadow-none align-middle justify-start items-center py-2  ${isExactPath('/my-tutor/dashboard')
                                     ? 'bg-red-50 text-red-600 hover:bg-red-100'
                                     : 'text-gray-600 hover:bg-gray-100'
                                     }`}
-                                onClick={() => navigate('/tutor')}
+                                onClick={() => navigate('/my-tutor/dashboard')}
                             >
                                 <i className={`far fa-home mr-3`}></i>
                                 {!collapsed && (

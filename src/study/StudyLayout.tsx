@@ -1,0 +1,138 @@
+import React, { useState, useEffect } from 'react';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { userApi, generateDicebearAvatar } from '@/Api';
+import toast from 'react-hot-toast';
+
+const StudyLayout: React.FC = () => {
+    const [user, setUser] = useState<any | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isCollapsed, setIsCollapsed] = useState(false);
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const fetchUserData = async () => {
+            try {
+                const userData = await userApi.getCurrentUser();
+                setUser(userData);
+            } catch (error) {
+                console.error('Failed to fetch user data:', error);
+                toast.error('Please log in to access your dashboard');
+                navigate('/login');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchUserData();
+    }, [navigate]);
+
+    const handleLogout = () => {
+        localStorage.removeItem('jwt');
+        toast.success('Logged out successfully');
+        navigate('/login');
+    };
+
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </div>
+        );
+    }
+
+    const navItems = [
+        { path: '/study/dashboard', icon: 'fas fa-home', label: 'Dashboard' },
+        { path: '/study/tutors', icon: 'fas fa-users', label: 'Tutors' },
+        { path: '/study/messages', icon: 'fas fa-comment', label: 'Messages' },
+        { path: '/study/schedule', icon: 'fas fa-calendar-alt', label: 'Schedule' },
+        { path: '/study/payments', icon: 'fas fa-credit-card', label: 'Payments' },
+        { path: '/study/settings', icon: 'fas fa-cog', label: 'Settings' },
+    ];
+
+    const avatarUrl = user?.avatarSeed
+        ? generateDicebearAvatar(user.avatarSeed)
+        : generateDicebearAvatar(user?.email || 'default');
+
+    return (
+        <div className="flex h-screen bg-gray-50">
+            {/* Sidebar */}
+            <div
+                className={`bg-white h-full shadow-md transition-all duration-300 flex flex-col ${isCollapsed ? 'w-20' : 'w-64'
+                    }`}
+            >
+                <div className="p-4 border-b flex justify-between items-center">
+                    <div className={`flex items-center gap-2 ${isCollapsed ? 'hidden' : 'block'}`}>
+                        <img src="/smalllogo.png" alt="BrainMinds" className="h-12" />
+                    </div>
+                    <button
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        className="p-1 rounded-full hover:bg-gray-100"
+                    >
+                        {isCollapsed ? (
+                            <i className="fas fa-chevron-right"></i>
+                        ) : (
+                            <i className="fas fa-chevron-left"></i>
+                        )}
+                    </button>
+                </div>
+
+                {/* Nav Links */}
+                <nav className="flex-1 overflow-y-auto py-4">
+                    <ul className="space-y-2">
+                        {navItems.map((item) => (
+                            <li key={item.path}>
+                                <Link
+                                    to={item.path}
+                                    className={`flex items-center px-4 py-3 ${location.pathname === item.path
+                                        ? 'bg-blue-50 text-blue-600'
+                                        : 'text-gray-700 hover:bg-gray-100'
+                                        } ${isCollapsed ? 'justify-center' : 'gap-3'}`}
+                                >
+                                    <i className={`${item.icon} ${isCollapsed ? 'text-xl' : ''}`}></i>
+                                    {!isCollapsed && <span>{item.label}</span>}
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                </nav>
+
+                {/* User Profile */}
+                <div className="border-t p-4">
+                    <div className="flex items-center gap-3">
+                        <img
+                            src={avatarUrl}
+                            alt={user?.name || 'User'}
+                            className="w-10 h-10 rounded-full"
+                        />
+                        {!isCollapsed && (
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                    {user?.firstName} {user?.lastName}
+                                </p>
+                                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                            </div>
+                        )}
+                    </div>
+                    <button
+                        onClick={handleLogout}
+                        className={`mt-4 flex items-center text-red-500 hover:text-red-700 ${isCollapsed ? 'justify-center w-full' : 'gap-2'
+                            }`}
+                    >
+                        <i className="fas fa-sign-out-alt"></i>
+                        {!isCollapsed && <span>Log out</span>}
+                    </button>
+                </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="flex-1 overflow-auto">
+                <div className="p-6 max-w-7xl mx-auto">
+                    <Outlet />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default StudyLayout;

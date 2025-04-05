@@ -22,7 +22,7 @@ const Api = axios.create({
 Api.interceptors.request.use(
     (config) => {
         // Get token from localStorage
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('jwt');
 
         // If token exists, add it to the headers
         if (token) {
@@ -45,8 +45,10 @@ Api.interceptors.response.use(
         // Handle 401 Unauthorized errors
         if (error.response && error.response.status === 401) {
             // Clear token and redirect to login
-            localStorage.removeItem('token');
-            window.location.href = '/login';
+            //localStorage.removeItem('jwt');
+            //window.location.href = '/login';
+            console.log('401 Unauthorized error');
+            throw error;
         }
 
         return Promise.reject(error);
@@ -76,6 +78,75 @@ export const userApi = {
             return response.data;
         } catch (error) {
             console.error('Failed to update user profile:', error);
+            throw error;
+        }
+    }
+};
+
+// Generate dicebear avatar URL
+export const generateDicebearAvatar = (seed: string) => {
+    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
+};
+
+// Tutor API methods
+export const tutorApi = {
+    // Get tutor profile
+    getTutorProfile: async (userId: number) => {
+        try {
+            const response = await Api.get(`/tutor/${userId}/profile`);
+            return response.data;
+        } catch (error) {
+            console.error('Failed to fetch tutor profile:', error);
+            throw error;
+        }
+    },
+
+    // Update tutor education information
+    updateTutorEducation: async (userId: number, educationData: {
+        educationLevel: string;
+        teachingStyle: string;
+        teachingMaterials: string;
+        aboutMe: string;
+        teachingCredentials: string;
+    }) => {
+        try {
+            const response = await Api.put(`/tutor/${userId}/education`, educationData);
+            return response.data;
+        } catch (error) {
+            console.error('Failed to update tutor education:', error);
+            throw error;
+        }
+    },
+
+    // Update tutor schedule
+    updateTutorSchedule: async (userId: number, scheduleData: {
+        timezone: string;
+        lessonDuration: number;
+        schedule: any;
+    }) => {
+        try {
+            const response = await Api.put(`/tutor/${userId}/schedule`, scheduleData);
+            return response.data;
+        } catch (error) {
+            console.error('Failed to update tutor schedule:', error);
+            throw error;
+        }
+    },
+
+    // Upload tutor avatar
+    uploadTutorAvatar: async (userId: number, avatarFile: File) => {
+        try {
+            const formData = new FormData();
+            formData.append('avatar', avatarFile);
+
+            const response = await Api.post(`/tutor/${userId}/avatar`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Failed to upload tutor avatar:', error);
             throw error;
         }
     }

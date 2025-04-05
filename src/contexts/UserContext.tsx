@@ -14,7 +14,7 @@ interface UserContextType {
     user: User | null;
     loading: boolean;
     error: string | null;
-    login: (email: string, password: string) => Promise<void>;
+    login: (email: string, password: string) => Promise<{ success: boolean; user: User }>;
     logout: () => void;
     updateUser: (userData: Partial<User>) => Promise<void>;
     refreshUser: () => Promise<void>;
@@ -67,10 +67,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             setError(null);
             const response = await Api.post('/auth/login', { email, password });
             const { token, user } = response.data;
+
+            console.log(token, user);
+
             sessionStorage.setItem('jwt', token);
+            localStorage.setItem('jwt', token);
             setUser(user);
-            // Refresh user data to ensure it's up-to-date
-            await refreshUser();
+
+            return { success: true, user: user };
         } catch (err) {
             setError('Login failed. Please check your credentials.');
             throw err;
@@ -81,6 +85,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     const logout = () => {
         sessionStorage.removeItem('jwt');
+        localStorage.removeItem('jwt');
         setUser(null);
     };
 
