@@ -1,4 +1,5 @@
 import axios from 'axios';
+import wsService from './services/wsService';
 
 // Define user data interface
 interface UserData {
@@ -51,6 +52,9 @@ Api.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+
+// Export websocket service
+export { wsService };
 
 // User API methods
 export const userApi = {
