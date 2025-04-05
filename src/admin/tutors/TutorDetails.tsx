@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Api from '@/Api';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import toast from 'react-hot-toast';
 import LoadingSpinner from '@/components/ui/loading-spinner';
-
+const url = 'http://localhost:3000/'
 type TutorDetails = {
     id: number;
     firstName: string;
@@ -13,6 +13,7 @@ type TutorDetails = {
     phone?: string;
     status: string;
     createdAt: string;
+    avatar?: string;
     tutorProfile?: {
         educationLevel: string;
         teachingStyle: string;
@@ -28,7 +29,6 @@ type TutorDetails = {
 
 const TutorDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const { toast } = useToast();
     const [tutor, setTutor] = useState<TutorDetails | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -101,7 +101,19 @@ const TutorDetails: React.FC = () => {
             <div className="bg-white rounded-lg p-6 shadow-sm">
                 <div className="flex items-start mb-6">
                     <div className="h-20 w-20 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-2xl mr-6">
-                        {tutor.firstName.charAt(0)}{tutor.lastName.charAt(0)}
+                        {tutor.avatar ? (
+                            <img
+                                src={`${url}${tutor.avatar}`}
+                                alt={`${tutor.firstName} ${tutor.lastName}`}
+                                className="h-full w-full object-cover rounded-full"
+                            />
+                        ) : (
+                            <img
+                                src={`https://api.dicebear.com/7.x/micah/svg?seed=${tutor.email}`}
+                                alt={`${tutor.firstName} ${tutor.lastName}`}
+                                className="h-full w-full"
+                            />
+                        )}
                     </div>
                     <div>
                         <h2 className="text-2xl font-bold text-gray-800">{tutor.firstName} {tutor.lastName}</h2>
@@ -141,10 +153,7 @@ const TutorDetails: React.FC = () => {
                                 <p className="text-sm text-gray-500">Education Level</p>
                                 <p className="text-gray-800">{tutor.tutorProfile?.educationLevel || 'Not specified'}</p>
                             </div>
-                            <div className="mb-3">
-                                <p className="text-sm text-gray-500">Rate per Hour</p>
-                                <p className="text-gray-800">${tutor.tutorProfile?.lessonPrice || 0}</p>
-                            </div>
+
                             <div className="mb-3">
                                 <p className="text-sm text-gray-500">Lesson Duration</p>
                                 <p className="text-gray-800">{tutor.tutorProfile?.lessonDuration || 60} minutes</p>
@@ -181,9 +190,20 @@ const TutorDetails: React.FC = () => {
                             <ul className="divide-y divide-gray-200">
                                 {tutor.tutorProfile.documents.map(doc => (
                                     <li key={doc.id} className="py-2">
-                                        <div className="flex items-center">
-                                            <i className="far fa-file-alt text-blue-500 mr-2"></i>
-                                            <span className="text-gray-800">{doc.filename}</span>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center">
+                                                <i className="far fa-file-alt text-blue-500 mr-2"></i>
+                                                <span className="text-gray-800">{doc.filename}</span>
+                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => window.open(`${'http://localhost:3000/api'}${doc.path}`, '_blank')}
+                                                className="text-blue-500 hover:text-blue-600"
+                                            >
+                                                <i className="far fa-download mr-2"></i>
+                                                Download
+                                            </Button>
                                         </div>
                                     </li>
                                 ))}

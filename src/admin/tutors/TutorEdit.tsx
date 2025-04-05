@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Api from '@/Api';
 import { Button } from '@/components/ui/button';
-import { toast, useToast } from '@/components/ui/use-toast';
+import toast from 'react-hot-toast';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 
 type TutorDetails = {
@@ -26,7 +26,6 @@ type TutorDetails = {
 const TutorEdit: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState({
@@ -40,8 +39,7 @@ const TutorEdit: React.FC = () => {
         teachingMaterials: '',
         aboutMe: '',
         timezone: '',
-        lessonDuration: '',
-        rate: ''
+        lessonDuration: ''
     });
 
     useEffect(() => {
@@ -63,7 +61,6 @@ const TutorEdit: React.FC = () => {
                 aboutMe: response.data.tutorProfile?.aboutMe || '',
                 timezone: response.data.tutorProfile?.timezone || '',
                 lessonDuration: response.data.tutorProfile?.lessonDuration?.toString() || '60',
-                rate: response.data.tutorProfile?.lessonPrice?.toString() || ''
             });
             setLoading(false);
         } catch (error) {
@@ -99,7 +96,6 @@ const TutorEdit: React.FC = () => {
                 aboutMe: formData.aboutMe,
                 timezone: formData.timezone,
                 lessonDuration: formData.lessonDuration,
-                rate: formData.rate
             });
 
             toast({
@@ -274,19 +270,6 @@ const TutorEdit: React.FC = () => {
                                 onChange={handleInputChange}
                                 min="15"
                                 step="15"
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="rate" className="block text-sm font-medium text-gray-700 mb-1">Hourly Rate ($)</label>
-                            <input
-                                type="number"
-                                id="rate"
-                                name="rate"
-                                className="w-full p-2 border border-gray-300 rounded-md"
-                                value={formData.rate}
-                                onChange={handleInputChange}
-                                min="0"
-                                step="1"
                             />
                         </div>
                     </div>

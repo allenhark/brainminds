@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Api from '@/Api';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import toast from 'react-hot-toast';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 
 type Student = {
@@ -16,7 +16,6 @@ type Student = {
 
 const TutorStudents: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const { toast } = useToast();
     const [students, setStudents] = useState<Student[]>([]);
     const [tutor, setTutor] = useState<{ firstName: string; lastName: string } | null>(null);
     const [loading, setLoading] = useState(true);
@@ -33,11 +32,7 @@ const TutorStudents: React.FC = () => {
             setStudents(response.data);
         } catch (error) {
             console.error('Failed to fetch tutor students:', error);
-            toast({
-                title: 'Error',
-                description: 'Failed to load tutor students.',
-                variant: 'destructive',
-            });
+            toast.error('Failed to load tutor students.');
         } finally {
             setLoading(false);
         }

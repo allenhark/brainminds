@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
 
@@ -9,6 +9,20 @@ const AdminLayout: React.FC = () => {
     const [pageTitle, setPageTitle] = useState('');
     const location = useLocation();
     const navigate = useNavigate();
+
+    const isExactPath = (itemPath: string) => {
+        // Remove trailing slashes for consistent comparison
+        const currentPath = location.pathname.replace(/\/$/, '');
+        const targetPath = itemPath.replace(/\/$/, '');
+
+        // For root admin path
+        if (targetPath === '/admin') {
+            return currentPath === '/admin';
+        }
+
+        // For other paths, ensure exact match
+        return currentPath === targetPath;
+    };
 
     useEffect(() => {
         // Set page title based on current route
@@ -29,14 +43,34 @@ const AdminLayout: React.FC = () => {
     }, [location]);
 
     const mainItems = [
-        { icon: 'far fa-chalkboard-teacher', label: 'Tutors', path: '/admin/tutors', badge: '12' },
-        { icon: 'far fa-calendar-alt', label: 'Sessions', path: '/admin/sessions', badge: '5' },
-        { icon: 'far fa-comment-alt', label: 'Messages', path: '/admin/messages', badge: '3' },
-        { icon: 'far fa-credit-card', label: 'Payments', path: '/admin/payments' },
-    ];
-
-    const bottomItems = [
-        { icon: 'far fa-cog', label: 'Settings', path: '/admin/settings' },
+        {
+            category: 'Tutor',
+            items: [
+                { icon: 'far fa-user', label: 'Tutors Management', path: '/admin/tutors' },
+                { icon: 'far fa-user-circle', label: 'Add Tutor', path: '/admin/tutors/create' },
+                { icon: 'far fa-users', label: 'Payment', path: '/admin/tutors/payments' }
+            ]
+        },
+        {
+            category: 'Student',
+            items: [
+                { icon: 'far fa-users-cog', label: 'Student Management', path: '/admin/students', soon: true },
+            ]
+        },
+        {
+            category: 'Messages',
+            items: [
+                { icon: 'far fa-envelope', label: 'Tutors', path: '/admin/messages/tutors', soon: true },
+                { icon: 'far fa-envelope', label: 'Students', path: '/admin/messages/students', soon: true },
+            ]
+        },
+        {
+            category: 'Payment',
+            items: [
+                { icon: 'far fa-window-maximize', label: 'Modals', path: '/admin/modals', soon: true },
+                { icon: 'far fa-hat-wizard', label: 'Wizards', path: '/admin/wizards', soon: true }
+            ]
+        }
     ];
 
     const handleLogout = () => {
@@ -56,7 +90,9 @@ const AdminLayout: React.FC = () => {
                     {/* Logo */}
                     <div className="flex items-center justify-between h-16 px-4 border-b">
                         {!collapsed && (
-                            <h1 className="text-xl font-bold text-red-600">BrainMinds</h1>
+                            <Link to="/admin/dashboard" className="flex items-center">
+                                <img src="/smalllogo.png" alt="BrainMinds" className="h-14" />
+                            </Link>
                         )}
                         <Button
                             variant="ghost"
@@ -69,49 +105,53 @@ const AdminLayout: React.FC = () => {
                     </div>
 
                     {/* Navigation */}
-                    <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-                        {mainItems.map((item) => (
+                    <nav className="flex-1 px-4 py-4 space-y-6 overflow-y-auto flex flex-col gap-y-2">
+                        <div className="space-y-2 mt-5 ">
                             <Button
-                                key={item.path}
-                                variant={location.pathname.includes(item.path) ? 'default' : 'ghost'}
-                                className={`w-full justify-start mb-1 ${location.pathname.includes(item.path)
+                                variant="ghost"
+                                className={`w-full flex outline-none shadow-none align-middle justify-start items-center py-2  ${isExactPath('/admin')
                                     ? 'bg-red-50 text-red-600 hover:bg-red-100'
                                     : 'text-gray-600 hover:bg-gray-100'
                                     }`}
-                                onClick={() => navigate(item.path)}
+                                onClick={() => navigate('/admin')}
                             >
-                                <i className={`${item.icon} mr-3 h-5 w-5`}></i>
+                                <i className={`far fa-home mr-3`}></i>
                                 {!collapsed && (
-                                    <>
-                                        <span className="flex-1">{item.label}</span>
-                                        {item.badge && (
-                                            <span className="ml-2 bg-red-100 text-red-600 text-xs font-medium px-2 py-0.5 rounded-full">
-                                                {item.badge}
-                                            </span>
-                                        )}
-                                    </>
+                                    <div className="flex justify-between items-center flex-1">
+                                        <span>Dashboard</span>
+                                    </div>
                                 )}
                             </Button>
+                        </div>
+
+                        {mainItems.map((section, idx) => (
+                            <div key={idx} className="space-y-2">
+                                {!collapsed && (
+                                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                        {section.category}
+                                    </h3>
+                                )}
+                                {section.items.map((item) => (
+                                    <Button
+                                        key={item.path}
+                                        variant={isExactPath(item.path) ? 'default' : 'ghost'}
+                                        className={`w-full outline-none shadow-none justify-start items-center py-2 mb-1 ${isExactPath(item.path)
+                                            ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                            : 'text-gray-600 hover:bg-gray-100'
+                                            }`}
+                                        onClick={() => navigate(item.path)}
+                                    >
+                                        <i className={`${item.icon} mr-3`}></i>
+                                        {!collapsed && (
+                                            <div className="flex justify-between items-center flex-1">
+                                                <span>{item.label}</span>
+                                            </div>
+                                        )}
+                                    </Button>
+                                ))}
+                            </div>
                         ))}
                     </nav>
-
-                    {/* Bottom Navigation */}
-                    <div className="px-2 py-4 border-t">
-                        {bottomItems.map((item) => (
-                            <Button
-                                key={item.path}
-                                variant={location.pathname.includes(item.path) ? 'default' : 'ghost'}
-                                className={`w-full justify-start mb-1 ${location.pathname.includes(item.path)
-                                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                                    : 'text-gray-600 hover:bg-gray-100'
-                                    }`}
-                                onClick={() => navigate(item.path)}
-                            >
-                                <i className={`${item.icon} mr-3 h-5 w-5`}></i>
-                                {!collapsed && <span>{item.label}</span>}
-                            </Button>
-                        ))}
-                    </div>
                 </div>
             </div>
 

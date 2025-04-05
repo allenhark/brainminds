@@ -88,7 +88,7 @@ export default function Footer() {
         {/* Copyright and Social Links */}
         <div className="flex flex-col md:flex-row justify-between items-center mt-8 md:mt-12 pt-8 border-t border-gray-800">
           <div className="flex items-center gap-2 mb-4 md:mb-0">
-            <span className="text-red-500 text-lg md:text-xl font-semibold">brainminds</span>
+            <span className="text-red-500 text-lg md:text-xl font-semibold">学习English</span>
             <span className="text-xs md:text-sm text-gray-400">© 2025 Learn with passion!</span>
           </div>
           <div className="flex gap-4">

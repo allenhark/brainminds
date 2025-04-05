@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Api from '@/Api';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
 import LoadingSpinner from '@/components/ui/loading-spinner';
+import toast from 'react-hot-toast';
 
 type Tutor = {
     id: number;
@@ -37,7 +37,6 @@ type ScheduleData = {
 
 const TutorSchedule: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const { toast } = useToast();
     const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null);
     const [loading, setLoading] = useState(true);
     const [students, setStudents] = useState<Student[]>([]);

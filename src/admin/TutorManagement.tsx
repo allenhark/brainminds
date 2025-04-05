@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '@/components/ui/loading-spinner';
+const url = 'http://localhost:3000/'
 
 type Tutor = {
     id: number;
@@ -15,6 +16,7 @@ type Tutor = {
     rate?: number;
     status: 'ACTIVE' | 'INACTIVE';
     createdAt: string;
+    avatar?: string;
 };
 
 type TutorApplication = {
@@ -48,6 +50,7 @@ const TutorManagement: React.FC = () => {
         try {
             setLoading(true);
             const response = await Api.get('/admin/tutors');
+            // console.log(response.data);
             setActiveTutors(response.data);
         } catch (error) {
             console.error('Failed to fetch tutors:', error);
@@ -208,7 +211,6 @@ const TutorManagement: React.FC = () => {
                                         <tr>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tutor</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                         </tr>
@@ -218,8 +220,20 @@ const TutorManagement: React.FC = () => {
                                             <tr key={tutor.id} className="hover:bg-gray-50">
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center">
-                                                        <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-medium">
-                                                            {`${tutor.firstName.charAt(0)}${tutor.lastName.charAt(0)}`}
+                                                        <div className="h-10 w-10 rounded-full overflow-hidden">
+                                                            {tutor.avatar ? (
+                                                                <img
+                                                                    src={`${url}${tutor.avatar}`}
+                                                                    alt={`${tutor.firstName} ${tutor.lastName}`}
+                                                                    className="h-full w-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                <img
+                                                                    src={`https://api.dicebear.com/7.x/micah/svg?seed=${tutor.email}`}
+                                                                    alt={`${tutor.firstName} ${tutor.lastName}`}
+                                                                    className="h-full w-full"
+                                                                />
+                                                            )}
                                                         </div>
                                                         <div className="ml-4">
                                                             <div className="text-sm font-medium text-gray-900">{`${tutor.firstName} ${tutor.lastName}`}</div>
@@ -229,9 +243,6 @@ const TutorManagement: React.FC = () => {
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="text-sm text-gray-900">{tutor.email}</div>
                                                     <div className="text-sm text-gray-500">{tutor.phone || 'N/A'}</div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    ${tutor.rate || 'N/A'}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${tutor.status === 'ACTIVE'

@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Api from '@/Api';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import toast from 'react-hot-toast';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 
 const CreateTutor: React.FC = () => {
     const navigate = useNavigate();
-    const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         firstName: '',
@@ -35,21 +34,13 @@ const CreateTutor: React.FC = () => {
         try {
             const response = await Api.post('/admin/tutors', formData);
 
-            toast({
-                title: 'Success',
-                description: 'Tutor created successfully.',
-                variant: 'default',
-            });
+            toast.success('Tutor created successfully.');
 
             // Redirect to the new tutor's details page
             navigate(`/admin/tutors/${response.data.userId}`);
         } catch (error) {
             console.error('Failed to create tutor:', error);
-            toast({
-                title: 'Error',
-                description: 'Failed to create tutor.',
-                variant: 'destructive',
-            });
+            toast.error('Failed to create tutor.');
         } finally {
             setLoading(false);
         }
@@ -188,19 +179,7 @@ const CreateTutor: React.FC = () => {
                                 step="15"
                             />
                         </div>
-                        <div>
-                            <label htmlFor="rate" className="block text-sm font-medium text-gray-700 mb-1">Hourly Rate ($)</label>
-                            <input
-                                type="number"
-                                id="rate"
-                                name="rate"
-                                className="w-full p-2 border border-gray-300 rounded-md"
-                                value={formData.rate}
-                                onChange={handleInputChange}
-                                min="0"
-                                step="1"
-                            />
-                        </div>
+
                     </div>
                 </div>
 

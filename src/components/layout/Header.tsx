@@ -156,7 +156,7 @@ export default function Header() {
       }`}>
       <div className="container max-w-6xl mx-auto px-4 flex h-16 items-center justify-between">
         <Link to="/" className="font-semibold text-xl text-red-500">
-          Brainminds
+          <img src="/smalllogo.png" alt="BrainMinds" className="h-14" />
         </Link>
 
         {/* Mobile Menu Button */}
