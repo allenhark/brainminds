@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import toast from 'react-hot-toast';
 import SubscriptionCard from './components/SubscriptionCard';
+import { url } from '@/config';
 
 // Types
 interface Tutor {
@@ -65,64 +66,6 @@ const Dashboard: React.FC = () => {
                 console.error('Failed to fetch dashboard data:', error);
                 toast.error('Failed to load dashboard data');
 
-                // Mock data for development
-                setFeaturedTutors([
-                    {
-                        id: 1,
-                        firstName: 'John',
-                        lastName: 'Smith',
-                        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john',
-                        subjects: ['Mathematics', 'Physics'],
-                        rating: 4.8,
-                        availability: ['Monday 15:00-18:00', 'Wednesday 14:00-16:00', 'Friday 16:00-19:00']
-                    },
-                    {
-                        id: 2,
-                        firstName: 'Emily',
-                        lastName: 'Chen',
-                        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=emily',
-                        subjects: ['Chemistry', 'Biology'],
-                        rating: 4.9,
-                        availability: ['Tuesday 15:00-18:00', 'Thursday 14:00-16:00', 'Saturday 10:00-13:00']
-                    },
-                    {
-                        id: 3,
-                        firstName: 'Michael',
-                        lastName: 'Wong',
-                        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=michael',
-                        subjects: ['English', 'Literature'],
-                        rating: 4.7,
-                        availability: ['Monday 10:00-13:00', 'Wednesday 16:00-19:00', 'Friday 14:00-17:00']
-                    }
-                ]);
-
-                setUpcomingSessions([
-                    {
-                        id: 1,
-                        tutor: {
-                            id: 1,
-                            firstName: 'John',
-                            lastName: 'Smith',
-                            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john'
-                        },
-                        startTime: new Date(new Date().getTime() + 1 * 24 * 60 * 60 * 1000).toISOString(),
-                        endTime: new Date(new Date().getTime() + 1 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(),
-                        status: 'scheduled',
-                        classLink: 'https://zoom.us/j/1234567890'
-                    },
-                    {
-                        id: 2,
-                        tutor: {
-                            id: 2,
-                            firstName: 'Emily',
-                            lastName: 'Chen',
-                            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=emily'
-                        },
-                        startTime: new Date(new Date().getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-                        endTime: new Date(new Date().getTime() + 3 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(),
-                        status: 'scheduled'
-                    }
-                ]);
             } finally {
                 setIsLoading(false);
             }
@@ -180,17 +123,9 @@ const Dashboard: React.FC = () => {
                     </CardContent>
                 </Card>
 
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg flex items-center">
-                            <i className="fas fa-credit-card text-green-500 mr-2"></i>
-                            Subscription Status
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <SubscriptionCard />
-                    </CardContent>
-                </Card>
+                <div className="">
+                    <SubscriptionCard />
+                </div>
             </div>
 
             {/* Upcoming Sessions */}
@@ -259,7 +194,7 @@ const Dashboard: React.FC = () => {
                                     <div className="p-4">
                                         <div className="flex items-center mb-2">
                                             <img
-                                                src={tutor.avatar}
+                                                src={tutor.avatar ? `${url}/${tutor.avatar}` : `https://api.dicebear.com/7.x/avataaars/svg?seed=${tutor.firstName}`}
                                                 alt={`${tutor.firstName} ${tutor.lastName}`}
                                                 className="w-12 h-12 rounded-full mr-3"
                                             />
@@ -285,9 +220,12 @@ const Dashboard: React.FC = () => {
                                         <div className="mb-3">
                                             <p className="text-sm text-gray-500 mb-1">Availability:</p>
                                             <ul className="text-xs text-gray-700 space-y-1">
-                                                {tutor.availability.slice(0, 3).map((slot, idx) => (
-                                                    <li key={idx}>{slot}</li>
-                                                ))}
+                                                {Array.isArray(tutor.availability)
+                                                    ? tutor.availability.slice(0, 3).map((slot, idx) => (
+                                                        <li key={idx}>{slot}</li>
+                                                    ))
+                                                    : <li>No availability information</li>
+                                                }
                                             </ul>
                                         </div>
 

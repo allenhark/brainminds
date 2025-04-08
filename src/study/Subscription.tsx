@@ -1,279 +1,771 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import Api from '@/Api';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '@/components/ui/loading-spinner';
+import wsService from '@/services/wsService';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { url } from '@/config';
 
-type PlanOption = {
-    id: string;
-    name: string;
-    price: number;
-    months: number;
-    features: string[];
-    recommended?: boolean;
-};
+// Types
+interface Message {
+    id: number;
+    content: string;
+    senderId: number;
+    receiverId: number;
+    type: 'text' | 'image' | 'file';
+    fileUrl?: string;
+    fileName?: string;
+    createdAt: string;
+    isRead?: boolean;
+    relativeTime?: string;
+}
 
-const planOptions: PlanOption[] = [
-    {
-        id: 'monthly',
-        name: '月度计划 Monthly Plan',
-        price: 13000, // ¥13,000
-        months: 1,
-        features: [
-            'Access to all tutors',
-            'Unlimited messaging',
-            'Schedule up to 2 sessions per month',
-        ],
-    },
-    {
-        id: 'quarterly',
-        name: '季度计划 Quarterly Plan',
-        price: 35100, // ¥35,100 (10% discount on monthly)
-        months: 3,
-        features: [
-            'Access to all tutors',
-            'Unlimited messaging',
-            'Schedule up to 8 sessions per quarter',
-            '10% discount compared to monthly plan',
-        ],
-        recommended: true,
-    },
-    {
-        id: 'annual',
-        name: '年度计划 Annual Plan',
-        price: 117000, // ¥117,000 (25% discount on monthly)
-        months: 12,
-        features: [
-            'Access to all tutors',
-            'Unlimited messaging',
-            'Schedule up to 36 sessions per year',
-            'Priority scheduling',
-            '25% discount compared to monthly plan',
-        ],
-    },
-];
+interface Chat {
+    id: number;
+    adminId: number;
+    adminName: string;
+    adminAvatar?: string;
+    lastMessage?: string;
+    lastMessageTime?: string;
+    unreadCount: number;
+}
+
+interface SubscriptionData {
+    isSubscribed: boolean;
+    subscription: {
+        id: number;
+        status: string;
+        startDate: string;
+        endDate: string;
+        amount: number;
+        paymentMethod: string | null;
+        createdAt: string;
+    } | null;
+}
 
 const Subscription: React.FC = () => {
-    const [selectedPlan, setSelectedPlan] = useState<string>('quarterly');
-    const [paymentMethod, setPaymentMethod] = useState<string>('card');
-    const [cardNumber, setCardNumber] = useState<string>('');
-    const [cardExpiry, setCardExpiry] = useState<string>('');
-    const [cardCVC, setCardCVC] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
+    const [message, setMessage] = useState<string>('Hello, I would like help subscribing/你好，我想帮助订阅');
+    const [chats, setChats] = useState<Chat[]>([]);
+    const [selectedChat, setSelectedChat] = useState<number | null>(null);
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [isTyping, setIsTyping] = useState<boolean>(false);
+    const [fileInput, setFileInput] = useState<File | null>(null);
+    const [userId, setUserId] = useState<number | null>(null);
+    const [isInitialMessage, setIsInitialMessage] = useState<boolean>(true);
+    const [isConnected, setIsConnected] = useState<boolean>(false);
+    const [subscriptionData, setSubscriptionData] = useState<SubscriptionData>({
+        isSubscribed: false,
+        subscription: null
+    });
+    const [subscriptionLoading, setSubscriptionLoading] = useState<boolean>(true);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
     const { mode } = useParams<{ mode: string }>();
+    const [retryCount, setRetryCount] = useState<number>(0);
+    const [maxRetryAttempts] = useState<number>(5);
+    const [retryDelay, setRetryDelay] = useState<number>(1000);
+    const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting');
+    const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const isRenew = mode === 'renew';
+    const price = 13000; // ¥13,000
 
-    const handlePaymentSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    useEffect(() => {
+        // Check if user is logged in
+        const checkUser = async () => {
+            try {
+                const response = await Api.get('/auth/me');
+                const userData = response.data;
+                setUserId(userData.id);
+
+                // Connect to WebSocket
+                connectWebSocket(userData.id, userData.role);
+            } catch (error) {
+                console.error('Failed to fetch user data:', error);
+                toast.error('Unable to check login status');
+            }
+        };
+
+        checkUser();
+
+        // Cleanup WebSocket connection on component unmount
+        return () => {
+            wsService.disconnect();
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    // Connect to WebSocket with exponential backoff
+    const connectWebSocket = (userId: number, role: string) => {
+        setConnectionStatus('connecting');
+
+        try {
+            // Cast role to the expected type
+            wsService.connect(userId.toString(), role as "TUTOR" | "STUDENT" | "ADMIN");
+            setConnectionStatus('connected');
+            setRetryCount(0);
+            setRetryDelay(1000);
+
+            // Set up WebSocket event listeners
+            setupWebSocketListeners();
+        } catch (error) {
+            console.error('WebSocket connection error:', error);
+            setConnectionStatus('disconnected');
+
+            // Implement exponential backoff for reconnection
+            if (retryCount < maxRetryAttempts) {
+                const timeout = Math.min(retryDelay * Math.pow(2, retryCount), 30000);
+                setRetryCount(prev => prev + 1);
+
+                reconnectTimeoutRef.current = setTimeout(() => {
+                    connectWebSocket(userId, role);
+                }, timeout);
+            } else {
+                toast.error('Failed to connect to chat server. Please refresh the page.');
+            }
+        }
+    };
+
+    const setupWebSocketListeners = () => {
+        // Listen for new messages
+        wsService.on('receive_message', (data) => {
+            if (data.chatId === selectedChat) {
+                // Insert message in the correct position based on timestamp
+                setMessages(prevMessages => {
+                    const newMessages = [...prevMessages];
+                    const messageTimestamp = new Date(data.message.createdAt).getTime();
+
+                    // Find the correct position to insert the message
+                    let insertIndex = 0;
+                    while (
+                        insertIndex < newMessages.length &&
+                        new Date(newMessages[insertIndex].createdAt).getTime() < messageTimestamp
+                    ) {
+                        insertIndex++;
+                    }
+
+                    // Insert the message at the correct position
+                    newMessages.splice(insertIndex, 0, data.message);
+                    return newMessages;
+                });
+                scrollToBottom();
+            }
+
+            // Update chat list with new message
+            setChats(prevChats => {
+                return prevChats.map(chat => {
+                    if (chat.id === data.chatId) {
+                        return {
+                            ...chat,
+                            lastMessage: data.message.content,
+                            lastMessageTime: data.message.createdAt,
+                            unreadCount: chat.id === selectedChat ? 0 : chat.unreadCount + 1
+                        };
+                    }
+                    return chat;
+                });
+            });
+        });
+
+        // Listen for typing indicators
+        wsService.on('typing_indicator', (data) => {
+            if (data.chatId === selectedChat) {
+                setIsTyping(data.isTyping);
+            }
+        });
+
+        // Listen for connection status
+        wsService.on('connect', () => {
+            setIsConnected(true);
+            setConnectionStatus('connected');
+            setRetryCount(0);
+            setRetryDelay(1000);
+        });
+
+        wsService.on('disconnect', () => {
+            setIsConnected(false);
+            setConnectionStatus('disconnected');
+
+            // Attempt to reconnect if we have user data
+            if (userId) {
+                const timeout = Math.min(retryDelay * Math.pow(2, retryCount), 30000);
+                setRetryCount(prev => prev + 1);
+
+                reconnectTimeoutRef.current = setTimeout(() => {
+                    connectWebSocket(userId, 'STUDENT');
+                }, timeout);
+            }
+        });
+
+        wsService.on('connect_error', (error) => {
+            console.error('WebSocket connection error:', error);
+            setConnectionStatus('disconnected');
+
+            // Attempt to reconnect if we have user data
+            if (userId && retryCount < maxRetryAttempts) {
+                const timeout = Math.min(retryDelay * Math.pow(2, retryCount), 30000);
+                setRetryCount(prev => prev + 1);
+
+                reconnectTimeoutRef.current = setTimeout(() => {
+                    connectWebSocket(userId, 'STUDENT');
+                }, timeout);
+            }
+        });
+
+        wsService.on('reconnect', (attemptNumber) => {
+            console.log('WebSocket reconnected after', attemptNumber, 'attempts');
+            setConnectionStatus('connected');
+            setRetryCount(0);
+            setRetryDelay(1000);
+        });
+    };
+
+    const fetchSubscriptionData = async () => {
+        try {
+            setSubscriptionLoading(true);
+            const response = await Api.get('/subscriptions');
+            setSubscriptionData(response.data);
+        } catch (error) {
+            console.error('Failed to fetch subscription data:', error);
+            // Default to non-subscribed state if can't fetch data
+            setSubscriptionData({
+                isSubscribed: false,
+                subscription: null
+            });
+        } finally {
+            setSubscriptionLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        // Fetch user chats
+        const fetchChats = async () => {
+            try {
+                const response = await Api.get('/chats');
+                setChats(response.data);
+
+                // Select the first chat by default if available
+                if (response.data.length > 0 && !selectedChat) {
+                    setSelectedChat(response.data[0].id);
+                    // Reset message if a chat is already started
+                    setMessage('');
+                    setIsInitialMessage(false);
+                }
+            } catch (error) {
+                console.error('Failed to fetch chats:', error);
+            }
+        };
+
+        if (userId) {
+            fetchChats();
+        }
+    }, [userId]);
+
+    useEffect(() => {
+        // Fetch messages when a chat is selected
+        if (selectedChat) {
+            const fetchMessages = async () => {
+                try {
+                    setLoading(true);
+                    const response = await Api.get(`/chats/${selectedChat}/messages`);
+
+                    // Sort messages by timestamp in ascending order (oldest first)
+                    const sortedMessages = [...response.data].sort((a: Message, b: Message) =>
+                        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+                    );
+
+                    setMessages(sortedMessages);
+                    scrollToBottom();
+
+                    // Mark messages as read
+                    if (isConnected) {
+                        const unreadMessageIds = sortedMessages
+                            .filter((msg: Message) => msg.senderId !== userId && !msg.isRead)
+                            .map((msg: Message) => msg.id);
+
+                        if (unreadMessageIds.length > 0) {
+                            wsService.markMessagesAsRead(
+                                userId?.toString() || '',
+                                selectedChat,
+                                unreadMessageIds
+                            );
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch messages:', error);
+                    toast.error('Failed to load messages');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            fetchMessages();
+        }
+    }, [selectedChat, userId, isConnected]);
+
+    // Fetch subscription data when component mounts
+    useEffect(() => {
+        fetchSubscriptionData();
+    }, []);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    const handleSendMessage = async () => {
+        if (!message.trim() && !fileInput) return;
 
         try {
             setLoading(true);
 
-            const selectedPlanDetails = planOptions.find(plan => plan.id === selectedPlan);
+            if (isInitialMessage) {
+                // Create new chat with initial message
+                const response = await Api.post('/chats', {
+                    message: message
+                });
 
-            if (!selectedPlanDetails) {
-                toast.error('Please select a plan');
-                setLoading(false);
-                return;
+                const newChat = response.data;
+                setChats([...chats, newChat]);
+                setSelectedChat(newChat.id);
+                setMessages([newChat.newMessage]);
+                setIsInitialMessage(false);
+                // Reset message after sending initial message
+                setMessage('');
+
+                // Send message via WebSocket
+                if (isConnected) {
+                    wsService.sendMessage(
+                        'admin', // Send to admin role
+                        newChat.id,
+                        message
+                    );
+                }
+
+                toast.success('Message sent! An admin will respond shortly. / 消息已发送！管理员将尽快回复。');
+            } else if (selectedChat) {
+                let messageId = null;
+                let fileUrl = null;
+                let fileName = null;
+
+                // If there's a file, upload it first
+                if (fileInput) {
+                    const formData = new FormData();
+                    formData.append('file', fileInput);
+
+                    const uploadResponse = await Api.post('/upload', formData, {
+                        headers: {
+                            'Content-Type': 'multipart/form-data',
+                        },
+                    });
+
+                    fileUrl = uploadResponse.data.url;
+                    fileName = fileInput.name;
+                }
+
+                // Create message in database
+                const formData = new FormData();
+                formData.append('content', message);
+                if (fileUrl) {
+                    formData.append('fileUrl', fileUrl);
+                    formData.append('fileName', fileName || '');
+                    formData.append('type', fileInput?.type.startsWith('image/') ? 'image' : 'file');
+                }
+
+                const response = await Api.post(`/chats/${selectedChat}/messages`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+
+                const newMessage = response.data;
+                messageId = newMessage.id;
+
+                // Update UI - insert message in the correct position based on timestamp
+                setMessages(prevMessages => {
+                    const newMessages = [...prevMessages];
+                    const messageTimestamp = new Date(newMessage.createdAt).getTime();
+
+                    // Find the correct position to insert the message
+                    let insertIndex = 0;
+                    while (
+                        insertIndex < newMessages.length &&
+                        new Date(newMessages[insertIndex].createdAt).getTime() < messageTimestamp
+                    ) {
+                        insertIndex++;
+                    }
+
+                    // Insert the message at the correct position
+                    newMessages.splice(insertIndex, 0, newMessage);
+                    return newMessages;
+                });
+
+                setMessage('');
+                setFileInput(null);
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                }
+                scrollToBottom();
+
+                // Send message via WebSocket
+                if (isConnected) {
+                    wsService.sendMessage(
+                        'admin', // Send to admin role
+                        selectedChat,
+                        message,
+                        messageId
+                    );
+                }
             }
-
-            // In a real application, you would handle card processing here
-            // using a payment processor like Stripe
-
-            // For now, we'll just simulate a successful payment
-            const endpoint = isRenew ? '/api/subscriptions/renew' : '/api/subscriptions/create';
-
-            await Api.post(endpoint, {
-                amount: selectedPlanDetails.price,
-                months: selectedPlanDetails.months,
-                paymentMethod: 'credit_card', // In real app, this would be the token from payment processor
-                paymentId: `sim_${Date.now()}`, // In real app, this would be the payment ID from processor
-            });
-
-            toast.success(`Subscription ${isRenew ? 'renewed' : 'created'} successfully!`);
-            navigate('/study/dashboard');
         } catch (error) {
-            console.error('Payment failed:', error);
-            toast.error('Payment failed. Please try again.');
+            console.error('Failed to send message:', error);
+            toast.error('Failed to send message');
         } finally {
             setLoading(false);
         }
     };
 
-    const formatCardNumber = (value: string) => {
-        const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-        const matches = v.match(/\d{4,16}/g);
-        const match = (matches && matches[0]) || '';
-        const parts = [];
-
-        for (let i = 0; i < match.length; i += 4) {
-            parts.push(match.substring(i, i + 4));
-        }
-
-        if (parts.length) {
-            return parts.join(' ');
-        }
-
-        return value;
+    const handleSubscribe = () => {
+        navigate('/payment', { state: { amount: price, purpose: 'subscription' } });
     };
 
-    const formatExpiry = (value: string) => {
-        const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    const formatDate = (dateString: string | undefined) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    };
 
-        if (v.length >= 2) {
-            return `${v.substring(0, 2)}/${v.substring(2, 4)}`;
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('ja-JP', {
+            style: 'currency',
+            currency: 'JPY',
+            minimumFractionDigits: 0
+        }).format(amount);
+    };
+
+    // Format timestamp to local time
+    const formatTimestamp = (timestamp: string) => {
+        if (!timestamp) return '';
+        const date = new Date(timestamp);
+        return date.toLocaleString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    const handleTypingIndicator = (isTyping: boolean) => {
+        if (selectedChat && isConnected) {
+            wsService.sendTypingIndicator(
+                selectedChat.toString(), // Send to specific chat room
+                selectedChat,
+                isTyping
+            );
         }
-
-        return value;
     };
 
-    const handlePlanSelect = (planId: string) => {
-        setSelectedPlan(planId);
-    };
-
-    if (loading) {
+    if (subscriptionLoading) {
         return (
-            <div className="flex justify-center items-center h-full">
-                <LoadingSpinner />
+            <div className="flex justify-center items-center h-full py-20">
+                <div className="text-center">
+                    <i className="fas fa-spinner fa-spin text-red-500 text-3xl mb-4"></i>
+                    <p className="text-gray-600">加载中... Loading...</p>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="container py-8">
-            <h1 className="text-3xl font-bold mb-6">
-                {isRenew ? 'Renew Your Subscription' : 'Choose a Subscription Plan'}
-            </h1>
-
-            <div className="grid md:grid-cols-2 gap-8">
-                <div>
-                    <h2 className="text-xl font-semibold mb-4">Select a Plan</h2>
-
-                    <div className="space-y-4">
-                        {planOptions.map((plan) => (
-                            <div
-                                key={plan.id}
-                                className={`relative rounded-lg border p-4 hover:border-primary cursor-pointer ${selectedPlan === plan.id ? 'border-primary bg-primary/5' : ''
-                                    }`}
-                                onClick={() => handlePlanSelect(plan.id)}
+        <div className="container max-w-6xl mx-auto px-4 py-8">
+            <div className="max-w-3xl mx-auto">
+                <div className="text-center mb-8">
+                    <h1 className="text-4xl font-bold mb-4">
+                        订阅管理
+                        <span className="block text-xl mt-2 text-gray-600">Subscription Management</span>
+                    </h1>
+                    {connectionStatus !== 'connected' && (
+                        <div className="mb-4">
+                            <Badge
+                                variant={connectionStatus === 'connecting' ? 'secondary' : 'destructive'}
+                                className="px-3 py-1"
                             >
-                                {plan.recommended && (
-                                    <span className="absolute -top-2 -right-2 bg-primary text-white text-xs px-2 py-1 rounded-full">
-                                        Recommended
-                                    </span>
-                                )}
-                                <input
-                                    type="radio"
-                                    name="plan"
-                                    id={plan.id}
-                                    value={plan.id}
-                                    checked={selectedPlan === plan.id}
-                                    onChange={() => handlePlanSelect(plan.id)}
-                                    className="absolute top-4 left-4"
-                                />
-                                <Label htmlFor={plan.id} className="block ml-6 cursor-pointer">
-                                    <div className="font-medium text-lg">{plan.name}</div>
-                                    <div className="text-2xl font-bold mt-1">
-                                        ¥{plan.price.toLocaleString()}
-                                        <span className="text-sm font-normal text-muted-foreground">
-                                            {plan.months === 1 ? '/month' : plan.months === 3 ? '/quarter' : '/year'}
-                                        </span>
+                                <div className={`w-2 h-2 mr-2 rounded-full ${connectionStatus === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
+                                {connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
+                            </Badge>
+                        </div>
+                    )}
+                </div>
+
+                {/* Subscription Status Card */}
+                <Card className="bg-gradient-to-b from-red-50 via-red-50/50 to-white mb-8">
+                    <CardHeader>
+                        <CardTitle className="text-2xl">
+                            订阅状态
+                            <span className="block text-lg mt-1 text-gray-600">Subscription Status</span>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {subscriptionData.isSubscribed ? (
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                                    <div>
+                                        <h3 className="font-bold text-green-700 mb-1">
+                                            已订阅
+                                            <span className="block text-sm mt-1">Active Subscription</span>
+                                        </h3>
+                                        <p className="text-sm text-gray-700">
+                                            到期日: {formatDate(subscriptionData.subscription?.endDate)}
+                                            <span className="block">Expires: {formatDate(subscriptionData.subscription?.endDate)}</span>
+                                        </p>
                                     </div>
-                                    <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
-                                        {plan.features.map((feature, index) => (
-                                            <li key={index} className="flex items-center">
-                                                <svg
-                                                    className="h-4 w-4 mr-2 text-primary"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                                </svg>
-                                                {feature}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </Label>
+                                    <Badge className="bg-green-500 text-white py-1 px-3 text-sm">
+                                        <i className="fas fa-check-circle mr-1"></i> 有效
+                                    </Badge>
+                                </div>
+
+                                <div className="bg-white p-4 rounded-lg border">
+                                    <h4 className="font-semibold mb-2">
+                                        订阅详情
+                                        <span className="block text-sm text-gray-600">Subscription Details</span>
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                        <div>
+                                            <p className="text-gray-500">开始日期 / Start Date</p>
+                                            <p>{formatDate(subscriptionData.subscription?.startDate)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-500">金额 / Amount</p>
+                                            <p>{formatCurrency(subscriptionData.subscription?.amount || 0)}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="text-center mt-4">
+                                    <Button
+                                        variant="outline"
+                                        className="bg-white hover:bg-red-50 text-red-500 border-red-200"
+                                        onClick={() => navigate('/study/subscription/renew')}
+                                    >
+                                        <i className="fas fa-sync-alt mr-2"></i>
+                                        续订会员
+                                        <span className="block text-xs mt-0.5">Renew Subscription</span>
+                                    </Button>
+                                </div>
                             </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Payment Details</CardTitle>
-                            <CardDescription>Enter your payment information below</CardDescription>
-                        </CardHeader>
-                        <form onSubmit={handlePaymentSubmit}>
-                            <CardContent className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="card-number">Card Number</Label>
-                                    <Input
-                                        id="card-number"
-                                        type="text"
-                                        placeholder="1234 5678 9012 3456"
-                                        value={cardNumber}
-                                        onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                                        required
-                                        maxLength={19}
-                                    />
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                                    <div>
+                                        <h3 className="font-bold text-yellow-700 mb-1">
+                                            未订阅
+                                            <span className="block text-sm mt-1">No Active Subscription</span>
+                                        </h3>
+                                        <p className="text-sm text-gray-700">
+                                            订阅后解锁全部功能
+                                            <span className="block">Subscribe to unlock all features</span>
+                                        </p>
+                                    </div>
+                                    <Badge className="bg-yellow-500 text-white py-1 px-3 text-sm">
+                                        <i className="fas fa-exclamation-circle mr-1"></i> 未激活
+                                    </Badge>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="expiry">Expiry Date</Label>
-                                        <Input
-                                            id="expiry"
-                                            type="text"
-                                            placeholder="MM/YY"
-                                            value={cardExpiry}
-                                            onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
-                                            required
-                                            maxLength={5}
-                                        />
+                                <div className="bg-white p-6 rounded-lg border text-center">
+                                    <h4 className="font-semibold text-lg mb-4">
+                                        会员套餐
+                                        <span className="block text-base text-gray-600 mt-1">Subscription Plan</span>
+                                    </h4>
+                                    <div className="mb-4">
+                                        <p className="text-4xl font-bold text-red-500">{formatCurrency(price)}</p>
+                                        <p className="text-sm text-gray-500">每月 / per month</p>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="cvc">CVC</Label>
-                                        <Input
-                                            id="cvc"
-                                            type="text"
-                                            placeholder="123"
-                                            value={cardCVC}
-                                            onChange={(e) => setCardCVC(e.target.value.replace(/[^0-9]/g, ''))}
-                                            required
-                                            maxLength={3}
-                                        />
-                                    </div>
+                                    <ul className="text-left mb-6 space-y-2">
+                                        <li className="flex items-start">
+                                            <i className="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                            <span>一对一个人辅导 / 1-on-1 personal tutoring</span>
+                                        </li>
+                                        <li className="flex items-start">
+                                            <i className="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                            <span>无限次聊天支持 / Unlimited chat support</span>
+                                        </li>
+                                        <li className="flex items-start">
+                                            <i className="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+                                            <span>学习资料库访问 / Access to learning materials</span>
+                                        </li>
+                                    </ul>
+                                    <Button
+                                        className="w-full bg-red-500 hover:bg-red-600"
+                                        onClick={handleSubscribe}
+                                    >
+                                        <i className="fas fa-credit-card mr-2"></i>
+                                        立即订阅
+                                        <span className="block text-xs mt-0.5">Subscribe Now</span>
+                                    </Button>
                                 </div>
+                            </div>
+                        )}
+                    </CardContent>
 
-                                <div className="border-t pt-4 mt-4">
-                                    <div className="flex justify-between font-medium">
-                                        <span>Total:</span>
-                                        <span>
-                                            ¥{(planOptions.find(p => p.id === selectedPlan)?.price || 0).toLocaleString()}
-                                        </span>
-                                    </div>
-                                </div>
-                            </CardContent>
-                            <CardFooter>
-                                <Button type="submit" className="w-full">
-                                    {isRenew ? 'Renew Subscription' : 'Complete Purchase'}
+                    <CardHeader>
+                        <CardTitle className="text-2xl">
+                            订阅帮助
+                            <span className="block text-lg mt-1 text-gray-600">Subscription Support</span>
+                        </CardTitle>
+                        <CardDescription>
+                            需要帮助订阅？我们的客服团队随时为您服务
+                            <span className="block text-sm mt-1">
+                                Need help with subscription? Our support team is here to help
+                            </span>
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {!selectedChat ? (
+                            <div className="space-y-4">
+                                <Textarea
+                                    placeholder="请输入您的消息 / Enter your message"
+                                    value={message}
+                                    onChange={(e) => setMessage(e.target.value)}
+                                    className="min-h-[100px] resize-none"
+                                />
+                                <Button
+                                    onClick={handleSendMessage}
+                                    disabled={loading || !message.trim()}
+                                    className="w-full bg-red-500 hover:bg-red-600"
+                                >
+                                    {loading ? (
+                                        <>
+                                            <i className="fas fa-spinner fa-spin mr-2"></i>
+                                            发送中... Sending...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="fas fa-paper-plane mr-2"></i>
+                                            发送消息 Send Message
+                                        </>
+                                    )}
                                 </Button>
-                            </CardFooter>
-                        </form>
-                    </Card>
-                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                <div className="flex items-center justify-between mb-4">
+                                    <div>
+                                        <h3 className="font-semibold">
+                                            客服对话
+                                            <span className="block text-sm text-gray-600">Support Chat</span>
+                                        </h3>
+                                        <p className="text-xs text-gray-500">
+                                            我们会尽快回复您的消息
+                                            <span className="block">We'll respond to your message as soon as possible</span>
+                                        </p>
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setSelectedChat(null)}
+                                        className="rounded-full"
+                                    >
+                                        <i className="fas fa-times"></i>
+                                    </Button>
+                                </div>
+
+                                <div className="h-[400px] overflow-y-auto p-4 bg-white rounded-lg border mb-4">
+                                    {messages.length === 0 && !loading ? (
+                                        <div className="flex justify-center items-center h-full text-gray-500">
+                                            <p>No messages yet / 还没有消息</p>
+                                        </div>
+                                    ) : (
+                                        messages.map((message) => (
+                                            <div
+                                                key={message.id}
+                                                className={`mb-4 ${message.senderId === userId ? 'text-right' : 'text-left'
+                                                    }`}
+                                            >
+                                                <div
+                                                    className={`inline-block p-3 rounded-lg ${message.senderId === userId
+                                                        ? 'bg-red-500 text-white'
+                                                        : 'bg-gray-100'
+                                                        }`}
+                                                >
+                                                    <p className="text-sm">{message.content}</p>
+                                                    <p className="text-xs mt-1 opacity-70">
+                                                        {message.relativeTime || formatTimestamp(message.createdAt)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                    {loading && (
+                                        <div className="flex justify-center">
+                                            <i className="fas fa-spinner fa-spin text-red-500 text-xl"></i>
+                                        </div>
+                                    )}
+                                    {isTyping && (
+                                        <div className="text-left mb-4">
+                                            <div className="inline-block p-2 px-4 rounded-lg bg-gray-100">
+                                                <div className="flex space-x-1">
+                                                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                                                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div ref={messagesEndRef} />
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <Input
+                                        value={message}
+                                        onChange={(e) => {
+                                            setMessage(e.target.value);
+                                            // Handle typing indicators
+                                            if (selectedChat && isConnected) {
+                                                if (!isTyping && e.target.value.trim()) {
+                                                    setIsTyping(true);
+                                                    handleTypingIndicator(true);
+                                                } else if (isTyping && !e.target.value.trim()) {
+                                                    setIsTyping(false);
+                                                    handleTypingIndicator(false);
+                                                }
+                                            }
+                                        }}
+                                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                                        placeholder="输入消息... Type a message..."
+                                        className="flex-1"
+                                    />
+                                    <Button
+                                        onClick={handleSendMessage}
+                                        disabled={loading || !message.trim()}
+                                        className="bg-red-500 hover:bg-red-600"
+                                    >
+                                        <i className="fas fa-paper-plane"></i>
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );
 };
 
-export default Subscription; 
+export default Subscription;

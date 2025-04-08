@@ -27,7 +27,7 @@ const SubscriptionCard: React.FC = () => {
         const fetchSubscription = async () => {
             try {
                 setLoading(true);
-                const response = await Api.get('/api/subscriptions');
+                const response = await Api.get('/subscriptions');
                 setIsSubscribed(response.data.isSubscribed);
                 setSubscription(response.data.subscription);
             } catch (error) {
@@ -52,11 +52,11 @@ const SubscriptionCard: React.FC = () => {
 
         try {
             setLoading(true);
-            await Api.post('/api/subscriptions/cancel');
+            await Api.post('/subscriptions/cancel');
             toast.success('Subscription canceled successfully');
 
             // Refresh subscription data
-            const response = await Api.get('/api/subscriptions');
+            const response = await Api.get('/subscriptions');
             setIsSubscribed(response.data.isSubscribed);
             setSubscription(response.data.subscription);
         } catch (error) {
@@ -73,7 +73,7 @@ const SubscriptionCard: React.FC = () => {
 
     if (loading) {
         return (
-            <Card className="w-full">
+            <Card className="w-full bg-white shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="pt-6 flex justify-center items-center h-40">
                     <LoadingSpinner />
                 </CardContent>
@@ -82,65 +82,72 @@ const SubscriptionCard: React.FC = () => {
     }
 
     return (
-        <Card className="w-full">
-            <CardHeader>
-                <CardTitle>Subscription Status</CardTitle>
-                <CardDescription>
-                    {isSubscribed ? 'Your current subscription details' : 'Subscribe to access premium features'}
-                </CardDescription>
+        <Card className="w-full bg-white shadow-sm hover:shadow-md transition-shadow">
+            <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center">
+                    <i className="fas fa-credit-card text-red-500 mr-2"></i>
+                    订阅状态 Subscription Status
+                </CardTitle>
             </CardHeader>
             <CardContent>
                 {isSubscribed && subscription ? (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <div className="flex justify-between items-center">
-                            <span className="font-medium">Status:</span>
+                            <span className="font-medium">状态 Status:</span>
                             <span className={`px-2 py-1 rounded text-sm ${subscription.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                                 }`}>
-                                {subscription.status.charAt(0) + subscription.status.slice(1).toLowerCase()}
+                                {subscription.status === 'ACTIVE' ? '活跃 Active' : '已取消 Cancelled'}
                             </span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="font-medium">Start Date:</span>
+                            <span className="font-medium">开始日期 Start Date:</span>
                             <span>{format(new Date(subscription.startDate), 'MMM dd, yyyy')}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="font-medium">End Date:</span>
+                            <span className="font-medium">结束日期 End Date:</span>
                             <span>{format(new Date(subscription.endDate), 'MMM dd, yyyy')}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="font-medium">Amount:</span>
-                            <span>${(subscription.amount / 100).toFixed(2)}</span>
+                            <span className="font-medium">金额 Amount:</span>
+                            <span>¥{(subscription.amount / 100).toFixed(2)}</span>
                         </div>
-                        {subscription.paymentMethod && (
-                            <div className="flex justify-between">
-                                <span className="font-medium">Payment Method:</span>
-                                <span>{subscription.paymentMethod}</span>
-                            </div>
-                        )}
                     </div>
                 ) : (
-                    <div className="text-center py-4">
-                        <p className="mb-4">
-                            Subscribe to access premium features including unlimited tutor messaging,
-                            priority scheduling, and learning resources.
-                        </p>
-                        <p className="text-lg font-bold">Starting at $9.99/month</p>
+                    <div className="text-center py-2">
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                            <i className="fas fa-check text-green-500"></i>
+                            <span>个性化学习路径 Personalized learning path</span>
+                        </div>
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                            <i className="fas fa-check text-green-500"></i>
+                            <span>灵活的时间安排 Flexible scheduling</span>
+                        </div>
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                            <i className="fas fa-check text-green-500"></i>
+                            <span>全面的进度跟踪 Comprehensive progress tracking</span>
+                        </div>
+                        <div className="flex items-center justify-center gap-2 mb-3">
+                            <i className="fas fa-check text-green-500"></i>
+                            <span>优质学习材料和资源 Premium learning materials</span>
+                        </div>
+                        <p className="text-2xl font-bold text-red-600 mb-1">¥13,000</p>
+                        <p className="text-gray-500 mb-2">per month</p>
                     </div>
                 )}
             </CardContent>
             <CardFooter className="flex justify-end space-x-2">
                 {isSubscribed ? (
                     <>
-                        <Button variant="outline" onClick={handleCancel}>
-                            Cancel
+                        <Button variant="outline" onClick={handleCancel} className="rounded-full">
+                            取消 Cancel
                         </Button>
-                        <Button onClick={handleRenew}>
-                            Renew
+                        <Button onClick={handleRenew} className="bg-red-500 hover:bg-red-600 text-white rounded-full">
+                            续订 Renew
                         </Button>
                     </>
                 ) : (
-                    <Button onClick={handleSubscribe}>
-                        Subscribe Now
+                    <Button onClick={handleSubscribe} className="bg-red-500 hover:bg-red-600 text-white rounded-full">
+                        立即订阅 Subscribe Now
                     </Button>
                 )}
             </CardFooter>

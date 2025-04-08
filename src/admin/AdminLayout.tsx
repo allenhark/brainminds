@@ -124,6 +124,24 @@ const AdminLayout: React.FC = () => {
                             </Button>
                         </div>
 
+                        <div className="space-y-2">
+                            <Button
+                                variant="ghost"
+                                className={`w-full flex outline-none shadow-none align-middle justify-start items-center py-2  ${isExactPath('/admin/support')
+                                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                    : 'text-gray-600 hover:bg-gray-100'
+                                    }`}
+                                onClick={() => navigate('/admin/support')}
+                            >
+                                <i className={`far fa-comments mr-3`}></i>
+                                {!collapsed && (
+                                    <div className="flex justify-between items-center flex-1">
+                                        <span>Support</span>
+                                    </div>
+                                )}
+                            </Button>
+                        </div>
+
                         {mainItems.map((section, idx) => (
                             <div key={idx} className="space-y-2">
                                 {!collapsed && (

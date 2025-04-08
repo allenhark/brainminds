@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import toast from 'react-hot-toast';
+import { url } from '@/config';
+import HelmetComponent from '@/components/HelmetComponent';
 
 // Types
 interface Tutor {
@@ -18,7 +20,11 @@ interface Tutor {
     yearsOfExperience: number;
     lessonPrice: number;
     rating: number;
-    availability: string[];
+    availability: Array<{
+        day: string;
+        startTime: string;
+        endTime: string;
+    }>;
     timezone: string;
     bio: string;
     teachingStyle: string;
@@ -109,8 +115,23 @@ const Tutors: React.FC = () => {
         );
     }
 
+    // Prepare dynamic meta content based on filters and results
+    const pageTitle = `找英语老师 - Find English Tutors${timezoneFilter ? ` in ${timezoneFilter}` : ''}`;
+    const pageDescription = `Browse and connect with professional English tutors${timezoneFilter ? ` in ${timezoneFilter}` : ''}. ${filteredTutors.length} tutors available${availabilityFilter ? ` for ${availabilityFilter}` : ''}.`;
+    const keywords = `english tutors, learn english, online tutoring, english teachers${timezoneFilter ? `, ${timezoneFilter} tutors` : ''}${availabilityFilter ? `, ${availabilityFilter} classes` : ''}`;
+    const currentUrl = window.location.href;
+
     return (
         <div className="space-y-6">
+            <HelmetComponent
+                title={pageTitle}
+                description={pageDescription}
+                keywords={keywords}
+                ogTitle={pageTitle}
+                ogDescription={pageDescription}
+                ogUrl={currentUrl}
+            />
+
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold">
                     找英语老师
@@ -188,9 +209,9 @@ const Tutors: React.FC = () => {
                                     {/* Tutor Image and Basic Info */}
                                     <div className="p-6 flex flex-col items-center md:items-start md:w-1/4 border-b md:border-b-0 md:border-r bg-gray-50">
                                         <img
-                                            src={tutor.avatar}
+                                            src={tutor.avatar ? `${url}/${tutor.avatar}` : `https://api.dicebear.com/6.x/bottts/svg?seed=${tutor.firstName}`}
                                             alt={`${tutor.firstName} ${tutor.lastName}`}
-                                            className="w-24 h-24 rounded-full mb-3 object-cover"
+                                            className="w-32 h-32 rounded-2xl mb-3 object-cover"
                                         />
                                         <h3 className="text-xl font-semibold text-center md:text-left">{tutor.firstName} {tutor.lastName}</h3>
                                         <div className="flex items-center mt-1 text-yellow-500">
@@ -199,7 +220,6 @@ const Tutors: React.FC = () => {
                                         </div>
                                         <p className="mt-2 text-sm text-gray-600">{tutor.educationLevel}</p>
                                         <p className="text-sm text-gray-600">{tutor.yearsOfExperience} 年经验 / years experience</p>
-                                        <p className="mt-2 font-medium">¥{tutor.lessonPrice}/小时 (hour)</p>
                                         <p className="text-sm text-gray-600 mt-2">时区 / Timezone: {tutor.timezone}</p>
                                     </div>
 
@@ -227,7 +247,9 @@ const Tutors: React.FC = () => {
                                             </h4>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                                                 {tutor.availability.map((slot, idx) => (
-                                                    <p key={idx} className="text-sm text-gray-600">{slot}</p>
+                                                    <p key={idx} className="text-sm text-gray-600">
+                                                        {slot.day}: {slot.startTime} - {slot.endTime}
+                                                    </p>
                                                 ))}
                                             </div>
                                         </div>
@@ -242,12 +264,6 @@ const Tutors: React.FC = () => {
 
                                             {subscriptionStatus.isSubscribed ? (
                                                 <>
-                                                    <Link to={`/study/messages?tutor=${tutor.id}`}>
-                                                        <Button variant="outline" className="flex items-center">
-                                                            <i className="fas fa-comment mr-2"></i>
-                                                            发消息 / Message
-                                                        </Button>
-                                                    </Link>
                                                     <Link to={`/study/schedule?tutor=${tutor.id}`}>
                                                         <Button variant="outline" className="flex items-center">
                                                             <i className="fas fa-calendar-alt mr-2"></i>

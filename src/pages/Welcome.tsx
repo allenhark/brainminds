@@ -14,7 +14,7 @@ const Welcome = () => {
             } else if (user.role === 'TUTOR') {
                 navigate('/my-tutor/dashboard');
             } else {
-                navigate('/study');
+                navigate('/study/dashboard');
             }
         }
     }, [user, navigate]);

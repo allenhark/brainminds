@@ -1,10 +1,14 @@
 import { io, Socket } from 'socket.io-client';
+import { API_BASE_URL } from '@/config';
 
 export class WebSocketService {
     private socket: Socket | null = null;
     private userId: string | null = null;
     private userRole: 'TUTOR' | 'STUDENT' | 'ADMIN' | null = null;
     private static instance: WebSocketService;
+    private reconnectAttempts = 0;
+    private maxReconnectAttempts = 5;
+    private reconnectDelay = 1000;
 
     // Event listeners
     private eventListeners: Record<string, ((data: any) => void)[]> = {
@@ -33,10 +37,20 @@ export class WebSocketService {
 
         const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+        // Don't use namespaces for now as they're causing issues
         this.socket = io(API_URL, {
             withCredentials: true,
             transports: ['websocket', 'polling'],
             autoConnect: true,
+            reconnection: true,
+            reconnectionAttempts: this.maxReconnectAttempts,
+            reconnectionDelay: this.reconnectDelay,
+            timeout: 10000,
+            auth: {
+                token: localStorage.getItem('token') || '',
+                userId,
+                role: userRole
+            }
         });
 
         this.userId = userId;
@@ -45,6 +59,8 @@ export class WebSocketService {
         this.socket.on('connect', this.handleConnect.bind(this));
         this.socket.on('disconnect', this.handleDisconnect.bind(this));
         this.socket.on('connect_error', this.handleConnectError.bind(this));
+        this.socket.on('reconnect', this.handleReconnect.bind(this));
+        this.socket.on('reconnect_error', this.handleReconnectError.bind(this));
 
         // Register event handlers
         Object.keys(this.eventListeners).forEach(event => {
@@ -63,21 +79,29 @@ export class WebSocketService {
             role: this.userRole
         });
 
+        this.reconnectAttempts = 0;
         console.log('WebSocket connected');
     }
 
     private handleDisconnect() {
         console.log('WebSocket disconnected');
+        this.triggerEvent('disconnect', {});
     }
 
     private handleConnectError(error: Error) {
         console.error('WebSocket connection error:', error);
-        // Attempt to reconnect after delay
-        setTimeout(() => {
-            if (this.socket && this.userId && this.userRole) {
-                this.socket.connect();
-            }
-        }, 5000);
+        this.triggerEvent('connect_error', { error: error.message });
+    }
+
+    private handleReconnect(attemptNumber: number) {
+        console.log('WebSocket reconnecting, attempt:', attemptNumber);
+        this.reconnectAttempts = attemptNumber;
+        this.triggerEvent('reconnect', { attemptNumber });
+    }
+
+    private handleReconnectError(error: Error) {
+        console.error('WebSocket reconnection error:', error);
+        this.triggerEvent('reconnect_error', { error: error.message });
     }
 
     private triggerEvent(event: string, data: any) {
@@ -92,12 +116,28 @@ export class WebSocketService {
             return false;
         }
 
-        this.socket.emit('send_message', {
-            to,
-            chatRoomId,
-            message,
+        const messageData = {
+            chatId: chatRoomId,
+            content: message,
+            type: 'text',
             messageId,
             timestamp: new Date().toISOString()
+        };
+
+        // Use the correct event name based on user role
+        const eventName = this.userRole === 'ADMIN' ? 'adminMessage' : 'send_message';
+        this.socket.emit(eventName, messageData);
+
+        // Trigger local message event for immediate UI update
+        this.triggerEvent('receive_message', {
+            chatId: chatRoomId,
+            message: {
+                id: messageId,
+                content: message,
+                senderId: this.userId,
+                createdAt: messageData.timestamp,
+                isRead: false
+            }
         });
 
         return true;
@@ -106,12 +146,45 @@ export class WebSocketService {
     sendTypingIndicator(to: string, chatRoomId: number, isTyping: boolean) {
         if (!this.socket || !this.socket.connected) return false;
 
-        this.socket.emit('typing', {
-            to,
-            chatRoomId,
-            isTyping
+        const typingData = {
+            chatId: chatRoomId,
+            isTyping,
+            userId: this.userId
+        };
+
+        // Use the correct event name based on user role
+        const eventName = this.userRole === 'ADMIN' ? 'adminTyping' : 'typing';
+        this.socket.emit(eventName, typingData);
+
+        // Trigger local typing event for immediate UI update
+        this.triggerEvent('typing_indicator', {
+            chatId: chatRoomId,
+            isTyping,
+            userId: this.userId
         });
 
+        return true;
+    }
+
+    // Join a chat room
+    joinChatRoom(chatRoomId: number) {
+        if (!this.socket || !this.socket.connected) {
+            console.error('Cannot join chat room: Socket not connected');
+            return false;
+        }
+
+        this.socket.emit('joinAdminChat', chatRoomId);
+        return true;
+    }
+
+    // Leave a chat room
+    leaveChatRoom(chatRoomId: number) {
+        if (!this.socket || !this.socket.connected) {
+            console.error('Cannot leave chat room: Socket not connected');
+            return false;
+        }
+
+        this.socket.emit('leaveAdminChat', chatRoomId);
         return true;
     }
 
@@ -132,6 +205,8 @@ export class WebSocketService {
         if (!this.eventListeners[event]) {
             this.eventListeners[event] = [];
         }
+
+        console.log('Subscribed to event:', event);
 
         this.eventListeners[event].push(callback);
 

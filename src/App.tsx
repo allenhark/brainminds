@@ -5,6 +5,7 @@ import Pricing from './pages/Pricing'
 import BecomeATutor from './pages/BecomeATutor'
 import LoginSignup from './pages/LoginSignup'
 import Tutor from './pages/Tutor'
+import Welcome from './pages/Welcome'
 
 // Admin imports
 import AdminLayout from './admin/AdminLayout'
@@ -14,6 +15,7 @@ import StudentManagement from './admin/StudentManagement'
 import ScheduleManagement from './admin/ScheduleManagement'
 import PaymentsManagement from './admin/PaymentsManagement'
 import MessagingManagement from './admin/MessagingManagement'
+import Support from './admin/Support'
 
 // Tutor management imports
 import TutorDetails from './admin/tutors/TutorDetails'
@@ -28,9 +30,12 @@ import StudentDashboard from './study/Dashboard'
 import StudentTutors from './study/Tutors'
 import StudentMessages from './study/Messages'
 import Subscription from './study/Subscription'
+import TutorView from './study/TutorView'
 
 // UI Components Provider
 import { Toaster } from 'react-hot-toast'
+
+// Tutor routes
 import TutorLayout from './tutor/TutorLayout'
 import TutorMessaging from './tutor/TutorMessaging'
 import TutorDashboard from './tutor/TutorDashboard'
@@ -40,8 +45,6 @@ import TutorSessions from './tutor/TutorSessions'
 import TutorPayments from './tutor/TutorPayments'
 import MyTutorStudents from './tutor/TutorStudents'
 import TutorClassLinks from './tutor/TutorClassLinks'
-import Welcome from './pages/Welcome'
-
 function App() {
   return (
     <>
@@ -70,6 +73,7 @@ function App() {
           <Route path="schedule" element={<ScheduleManagement />} />
           <Route path="payments" element={<PaymentsManagement />} />
           <Route path="messaging" element={<MessagingManagement />} />
+          <Route path="support" element={<Support />} />
         </Route>
 
         {/* Tutor routes */}
@@ -94,6 +98,7 @@ function App() {
           <Route path="schedule" element={<TutorSessions />} />
           <Route path="payments" element={<PaymentsManagement />} />
           <Route path="settings" element={<TutorProfile />} />
+          <Route path="tutors/:id" element={<TutorView />} />
         </Route>
       </Routes>
     </>
