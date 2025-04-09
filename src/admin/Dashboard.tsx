@@ -1,117 +1,131 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import Api from '@/Api';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+
+// Types for our API responses
+type DashboardStat = {
+    value: number | string;
+    change: string;
+    changeType: 'positive' | 'negative';
+};
+
+type DashboardStats = {
+    totalTutors: DashboardStat;
+    totalStudents: DashboardStat;
+    activeSessions: DashboardStat;
+    revenue: DashboardStat;
+};
+
+type Session = {
+    id: number;
+    tutor: string;
+    student: string;
+    subject: string;
+    date: string;
+    time?: string;
+    duration: string;
+    status?: string;
+};
+
+type RevenueData = {
+    month: string;
+    revenue: number;
+};
+
+type SessionData = {
+    month: string;
+    completed: number;
+    cancelled: number;
+};
 
 const Dashboard: React.FC = () => {
-    // Sample data for dashboard stats
-    const stats = [
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [recentSessions, setRecentSessions] = useState<Session[]>([]);
+    const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
+    const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
+    const [sessionData, setSessionData] = useState<SessionData[]>([]);
+
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            try {
+                setIsLoading(true);
+                setError(null);
+
+                // Fetch all dashboard data in parallel
+                const [statsRes, recentRes, upcomingRes, revenueRes, sessionStatsRes] = await Promise.all([
+                    Api.get('/admin/dashboard/stats'),
+                    Api.get('/admin/dashboard/recent-sessions'),
+                    Api.get('/admin/dashboard/upcoming-sessions'),
+                    Api.get('/admin/dashboard/monthly-revenue'),
+                    Api.get('/admin/dashboard/session-stats')
+                ]);
+
+                // Set state with fetched data
+                setStats(statsRes.data.data);
+                setRecentSessions(recentRes.data.data);
+                setUpcomingSessions(upcomingRes.data.data);
+                setRevenueData(revenueRes.data.data);
+                setSessionData(sessionStatsRes.data.data);
+            } catch (err) {
+                console.error('Error fetching dashboard data:', err);
+                setError('Failed to load dashboard data. Please try again later.');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchDashboardData();
+    }, []);
+
+    // Format the dashboard statistics for display
+    const formattedStats = stats ? [
         {
             title: 'Total Tutors',
-            value: '24',
-            icon: 'far fa-user',
-            change: '12% this month',
-            changeType: 'positive'
+            value: stats.totalTutors.value.toString(),
+            icon: 'fas fa-chalkboard-teacher',
+            change: stats.totalTutors.change,
+            changeType: stats.totalTutors.changeType
         },
         {
             title: 'Total Students',
-            value: '56',
-            icon: 'far fa-users',
-            change: '8% this month',
-            changeType: 'positive'
+            value: stats.totalStudents.value.toString(),
+            icon: 'fas fa-user-graduate',
+            change: stats.totalStudents.change,
+            changeType: stats.totalStudents.changeType
         },
         {
             title: 'Active Sessions',
-            value: '15',
-            icon: 'far fa-video',
-            change: '5% this week',
-            changeType: 'positive'
+            value: stats.activeSessions.value.toString(),
+            icon: 'fas fa-video',
+            change: stats.activeSessions.change,
+            changeType: stats.activeSessions.changeType
         },
         {
             title: 'Revenue',
-            value: '$12,845',
-            icon: 'far fa-dollar-sign',
-            change: '10% this month',
-            changeType: 'positive'
+            value: `$${parseFloat(stats.revenue.value.toString()).toLocaleString()}`,
+            icon: 'fas fa-dollar-sign',
+            change: stats.revenue.change,
+            changeType: stats.revenue.changeType
         }
-    ];
+    ] : [];
 
-    // Sample data for recent tutoring sessions
-    const recentSessions = [
-        {
-            id: 1,
-            tutor: 'John Smith',
-            student: 'Emily Johnson',
-            subject: 'Mathematics',
-            date: '2023-05-15',
-            duration: '1 hour',
-            status: 'completed'
-        },
-        {
-            id: 2,
-            tutor: 'Sarah Parker',
-            student: 'Michael Brown',
-            subject: 'Physics',
-            date: '2023-05-14',
-            duration: '2 hours',
-            status: 'completed'
-        },
-        {
-            id: 3,
-            tutor: 'David Wilson',
-            student: 'Emma Davis',
-            subject: 'Chemistry',
-            date: '2023-05-14',
-            duration: '1.5 hours',
-            status: 'completed'
-        },
-        {
-            id: 4,
-            tutor: 'Jessica Lee',
-            student: 'William Taylor',
-            subject: 'Biology',
-            date: '2023-05-13',
-            duration: '1 hour',
-            status: 'completed'
-        },
-        {
-            id: 5,
-            tutor: 'Robert Miller',
-            student: 'Olivia Wilson',
-            subject: 'English Literature',
-            date: '2023-05-12',
-            duration: '2 hours',
-            status: 'completed'
-        }
-    ];
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </div>
+        );
+    }
 
-    // Sample data for upcoming sessions
-    const upcomingSessions = [
-        {
-            id: 6,
-            tutor: 'John Smith',
-            student: 'James Anderson',
-            subject: 'Mathematics',
-            date: '2023-05-16',
-            time: '10:00 AM',
-            duration: '1 hour'
-        },
-        {
-            id: 7,
-            tutor: 'Sarah Parker',
-            student: 'Sophia Martin',
-            subject: 'Physics',
-            date: '2023-05-16',
-            time: '2:00 PM',
-            duration: '1.5 hours'
-        },
-        {
-            id: 8,
-            tutor: 'David Wilson',
-            student: 'Noah Thompson',
-            subject: 'Chemistry',
-            date: '2023-05-17',
-            time: '11:00 AM',
-            duration: '1 hour'
-        }
-    ];
+    if (error) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="text-red-500">{error}</div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -126,7 +140,7 @@ const Dashboard: React.FC = () => {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {stats.map((stat, index) => (
+                {formattedStats.map((stat, index) => (
                     <div key={index} className="bg-white rounded-lg p-5 shadow-sm">
                         <div className="flex justify-between items-start">
                             <div>
@@ -150,14 +164,51 @@ const Dashboard: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white rounded-lg p-5 shadow-sm">
                     <h3 className="font-semibold text-gray-700 mb-4">Monthly Revenue</h3>
-                    <div className="h-64 flex items-center justify-center bg-gray-50 rounded">
-                        <p className="text-gray-400">Revenue chart will be displayed here</p>
+                    <div className="h-64">
+                        {revenueData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart
+                                    data={revenueData}
+                                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="month" />
+                                    <YAxis />
+                                    <Tooltip formatter={(value) => [`$${value}`, 'Revenue']} />
+                                    <Legend />
+                                    <Line type="monotone" dataKey="revenue" stroke="#3B82F6" activeDot={{ r: 8 }} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full flex items-center justify-center bg-gray-50 rounded">
+                                <p className="text-gray-400">No revenue data available</p>
+                            </div>
+                        )}
                     </div>
                 </div>
                 <div className="bg-white rounded-lg p-5 shadow-sm">
                     <h3 className="font-semibold text-gray-700 mb-4">Session Statistics</h3>
-                    <div className="h-64 flex items-center justify-center bg-gray-50 rounded">
-                        <p className="text-gray-400">Session statistics chart will be displayed here</p>
+                    <div className="h-64">
+                        {sessionData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    data={sessionData}
+                                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="month" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Bar dataKey="completed" fill="#4ADE80" name="Completed" />
+                                    <Bar dataKey="cancelled" fill="#F87171" name="Cancelled" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full flex items-center justify-center bg-gray-50 rounded">
+                                <p className="text-gray-400">No session data available</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -195,30 +246,38 @@ const Dashboard: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {recentSessions.map((session) => (
-                                <tr key={session.id}>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        {session.tutor}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {session.student}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {session.subject}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {session.date}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {session.duration}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                            {session.status}
-                                        </span>
+                            {recentSessions.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                                        No recent sessions found
                                     </td>
                                 </tr>
-                            ))}
+                            ) : (
+                                recentSessions.map((session) => (
+                                    <tr key={session.id}>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                            {session.tutor}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {session.student}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {session.subject}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {session.date}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {session.duration}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                {session.status || 'completed'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -233,25 +292,31 @@ const Dashboard: React.FC = () => {
                     </button>
                 </div>
                 <div className="space-y-4">
-                    {upcomingSessions.map((session) => (
-                        <div key={session.id} className="flex items-center justify-between p-4 border border-gray-100 rounded-lg">
-                            <div className="flex items-center space-x-4">
-                                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                    <i className="far fa-user text-blue-500"></i>
-                                </div>
-                                <div>
-                                    <p className="font-medium text-gray-800">{session.subject}</p>
-                                    <p className="text-sm text-gray-500">
-                                        {session.tutor} with {session.student}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-sm font-medium text-gray-800">{session.date}</p>
-                                <p className="text-sm text-gray-500">{session.time} ({session.duration})</p>
-                            </div>
+                    {upcomingSessions.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-gray-500">
+                            No upcoming sessions found
                         </div>
-                    ))}
+                    ) : (
+                        upcomingSessions.map((session) => (
+                            <div key={session.id} className="flex items-center justify-between p-4 border border-gray-100 rounded-lg">
+                                <div className="flex items-center space-x-4">
+                                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                        <i className="fas fa-user text-blue-500"></i>
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-gray-800">{session.subject}</p>
+                                        <p className="text-sm text-gray-500">
+                                            {session.tutor} with {session.student}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-sm font-medium text-gray-800">{session.date}</p>
+                                    <p className="text-sm text-gray-500">{session.time} ({session.duration})</p>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
         </div>
