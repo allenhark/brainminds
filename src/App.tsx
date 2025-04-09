@@ -7,6 +7,12 @@ import LoginSignup from './pages/LoginSignup'
 import Tutor from './pages/Tutor'
 import Welcome from './pages/Welcome'
 
+// Location pages
+import BeijingPage from './pages/beijing'
+import BeijingBusinessEnglish from './pages/beijing/business-english'
+import ShanghaiPage from './pages/shanghai'
+import ShanghaiConversation from './pages/shanghai/conversation'
+
 // Admin imports
 import AdminLayout from './admin/AdminLayout'
 import Dashboard from './admin/Dashboard'
@@ -63,6 +69,35 @@ function App() {
           <Route path="/login" element={<LoginSignup />} />
           <Route path="/tutor/:slug" element={<Tutor />} />
           <Route path="/welcome" element={<Welcome />} />
+
+          {/* Location-based routes */}
+          {/* Beijing routes */}
+          <Route path="/beijing" element={<BeijingPage />} />
+          <Route path="/beijing/business-english" element={<BeijingBusinessEnglish />} />
+          <Route path="/beijing/ielts" element={<BeijingPage />} />
+          <Route path="/beijing/toefl" element={<BeijingPage />} />
+          <Route path="/beijing/kids" element={<BeijingPage />} />
+
+          {/* Shanghai routes */}
+          <Route path="/shanghai" element={<ShanghaiPage />} />
+          <Route path="/shanghai/business-english" element={<ShanghaiPage />} />
+          <Route path="/shanghai/ielts" element={<ShanghaiPage />} />
+          <Route path="/shanghai/toefl" element={<ShanghaiPage />} />
+          <Route path="/shanghai/conversation" element={<ShanghaiConversation />} />
+
+          {/* Guangzhou routes */}
+          <Route path="/guangzhou" element={<Home />} />
+          <Route path="/guangzhou/business-english" element={<Home />} />
+          <Route path="/guangzhou/ielts" element={<Home />} />
+          <Route path="/guangzhou/kids" element={<Home />} />
+          <Route path="/guangzhou/pronunciation" element={<Home />} />
+
+          {/* Shenzhen routes */}
+          <Route path="/shenzhen" element={<Home />} />
+          <Route path="/shenzhen/business-english" element={<Home />} />
+          <Route path="/shenzhen/toefl" element={<Home />} />
+          <Route path="/shenzhen/conversation" element={<Home />} />
+          <Route path="/shenzhen/grammar" element={<Home />} />
         </Route>
 
         {/* Admin routes */}
