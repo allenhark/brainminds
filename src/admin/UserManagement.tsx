@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import toast from 'react-hot-toast';
+import HelmetComponent from '@/components/HelmetComponent';
 
 type Admin = {
     id: number;
