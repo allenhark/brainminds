@@ -66,13 +66,13 @@ const AdminLayout: React.FC = () => {
                 { icon: 'far fa-users-cog', label: 'Student Management', path: '/admin/students', soon: true },
             ]
         },
-        {
-            category: 'Messages',
-            items: [
-                { icon: 'far fa-envelope', label: 'Tutors', path: '/admin/messages/tutors', soon: true },
-                { icon: 'far fa-envelope', label: 'Students', path: '/admin/messages/students', soon: true },
-            ]
-        },
+        // {
+        //     category: 'Messages',
+        //     items: [
+        //         { icon: 'far fa-envelope', label: 'Tutors', path: '/admin/messages/tutors', soon: true },
+        //         { icon: 'far fa-envelope', label: 'Students', path: '/admin/messages/students', soon: true },
+        //     ]
+        // },
         // {
         //     category: 'Payment',
         //     items: [
