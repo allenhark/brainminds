@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 import { url } from '@/config';
+import HelmetComponent from '@/components/HelmetComponent';
 
 type Tutor = {
     id: number;
@@ -140,6 +141,11 @@ const TutorManagement: React.FC = () => {
 
     return (
         <div className="space-y-6">
+            <HelmetComponent
+                title="Tutor Management"
+                description="Tutor management for the admin"
+            />
+
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800">Tutor Management</h2>

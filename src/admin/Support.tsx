@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import toast from 'react-hot-toast';
 import wsService from '@/services/wsService';
+import HelmetComponent from '@/components/HelmetComponent';
 
 // Types
 interface User {
@@ -403,6 +404,11 @@ const AdminSupport: React.FC = () => {
 
     return (
         <div className="container p-4 mx-auto">
+            <HelmetComponent
+                title="Support Dashboard"
+                description="Support dashboard for the admin"
+            />
+
             <div className="flex items-center justify-between mb-4">
                 <h1 className="text-2xl font-bold">Support Dashboard</h1>
                 <Badge

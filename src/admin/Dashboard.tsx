@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Api from '@/Api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import HelmetComponent from '@/components/HelmetComponent';
 
 // Types for our API responses
 type DashboardStat = {
@@ -129,12 +130,18 @@ const Dashboard: React.FC = () => {
 
     return (
         <div className="space-y-6">
+
+            <HelmetComponent
+                title="Admin Dashboard"
+                description="Dashboard for the admin"
+            />
+
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-800">Dashboard Overview</h2>
                 <div>
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700">
+                    {/* <button className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700">
                         Generate Report
-                    </button>
+                    </button> */}
                 </div>
             </div>
 

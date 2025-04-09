@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-
+import HelmetComponent from '@/components/HelmetComponent';
 type Session = {
     id: number;
     title: string;
@@ -212,6 +212,11 @@ const ScheduleManagement: React.FC = () => {
 
     return (
         <div className="space-y-6">
+            <HelmetComponent
+                title="Schedule Management"
+                description="Schedule management for the admin"
+            />
+
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-800">Schedule Management</h2>
                 <div className="flex space-x-2">

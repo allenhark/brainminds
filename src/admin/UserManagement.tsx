@@ -157,6 +157,11 @@ const UserManagement: React.FC = () => {
 
     return (
         <div className="p-6">
+            <HelmetComponent
+                title="Admin Management"
+                description="Admin management for the admin"
+            />
+
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold">Admin Management</h1>
                 <Button onClick={handleCreateAdmin} className="bg-green-600 hover:bg-green-700">
