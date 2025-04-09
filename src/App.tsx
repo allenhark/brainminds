@@ -6,6 +6,13 @@ import BecomeATutor from './pages/BecomeATutor'
 import LoginSignup from './pages/LoginSignup'
 import Tutor from './pages/Tutor'
 import Welcome from './pages/Welcome'
+import FaqPage from './pages/faq'
+import ContactPage from './pages/contact'
+
+// Subject pages
+import IELTSCoursePage from './pages/subjects/ielts'
+import GeneralEnglishCoursePage from './pages/subjects/general'
+import BusinessEnglishPage from './pages/subjects/business'
 
 // Location pages
 import BeijingPage from './pages/beijing'
@@ -71,6 +78,13 @@ function App() {
           <Route path="/login" element={<LoginSignup />} />
           <Route path="/tutor/:slug" element={<Tutor />} />
           <Route path="/welcome" element={<Welcome />} />
+          <Route path="/faq" element={<FaqPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+
+          {/* Subject routes */}
+          <Route path="/subjects/ielts" element={<IELTSCoursePage />} />
+          <Route path="/subjects/general" element={<GeneralEnglishCoursePage />} />
+          <Route path="/subjects/business" element={<BusinessEnglishPage />} />
 
           {/* Location-based routes */}
           {/* Beijing routes */}
