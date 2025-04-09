@@ -71,6 +71,12 @@ const AdminLayout: React.FC = () => {
         //         { icon: 'far fa-hat-wizard', label: 'Wizards', path: '/admin/wizards', soon: true }
         //     ]
         // }
+        {
+            category: 'Settings',
+            items: [
+                { icon: 'far fa-cog', label: 'Admins', path: '/admin/admins' },
+            ]
+        }
     ];
 
     const handleLogout = () => {

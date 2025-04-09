@@ -48,6 +48,7 @@ import MyTutorStudents from './tutor/TutorStudents'
 import TutorClassLinks from './tutor/TutorClassLinks'
 import StudySettings from './study/StudySettings'
 import TutorNotifications from './tutor/TutorNotifications'
+import UserManagement from './admin/UserManagement'
 
 function App() {
   return (
@@ -80,6 +81,7 @@ function App() {
           <Route path="payments" element={<PaymentsManagement />} />
           <Route path="messaging" element={<MessagingManagement />} />
           <Route path="support" element={<Support />} />
+          <Route path="admins" element={<UserManagement />} />
         </Route>
 
         {/* Tutor routes */}
