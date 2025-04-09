@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
+import HelmetComponent from '@/components/HelmetComponent';
 
 // Types
 interface Tutor {
@@ -266,6 +267,15 @@ const Messages: React.FC = () => {
 
     return (
         <div className="h-[calc(100vh-8rem)]">
+            <HelmetComponent
+                title="消息 | Messages"
+                description="与您的老师进行消息交流"
+                keywords="消息, 老师, 交流"
+                ogTitle="消息 | Messages"
+                ogDescription="与您的老师进行消息交流"
+                ogUrl={window.location.href}
+            />
+
             <h1 className="text-2xl font-bold mb-4">Messages</h1>
 
             {!subscriptionStatus.isSubscribed && (

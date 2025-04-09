@@ -46,6 +46,7 @@ import TutorPayments from './tutor/TutorPayments'
 import MyTutorStudents from './tutor/TutorStudents'
 import TutorClassLinks from './tutor/TutorClassLinks'
 import StudySettings from './study/StudySettings'
+import TutorNotifications from './tutor/TutorNotifications'
 
 function App() {
   return (
@@ -80,6 +81,7 @@ function App() {
 
         {/* Tutor routes */}
         <Route path="/my-tutor" element={<TutorLayout />}>
+          <Route index element={<TutorDashboard />} />
           <Route path="dashboard" element={<TutorDashboard />} />
           <Route path="messages" element={<TutorMessaging />} />
           <Route path="profile" element={<TutorProfile />} />
@@ -88,10 +90,12 @@ function App() {
           <Route path="availability" element={<TutorAvailability />} />
           <Route path="payments" element={<TutorPayments />} />
           <Route path="class-links" element={<TutorClassLinks />} />
+          <Route path="notifications" element={<TutorNotifications />} />
         </Route>
 
         {/* Student Study routes */}
         <Route path="/study" element={<StudyLayout />}>
+          <Route index element={<StudentDashboard />} />
           <Route path="dashboard" element={<StudentDashboard />} />
           <Route path="tutors" element={<StudentTutors />} />
           <Route path="messages" element={<StudentMessages />} />

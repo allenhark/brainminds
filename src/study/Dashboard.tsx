@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import toast from 'react-hot-toast';
 import SubscriptionCard from './components/SubscriptionCard';
 import { url } from '@/config';
-
+import HelmetComponent from '@/components/HelmetComponent';
 // Types
 interface Tutor {
     id: number;
@@ -91,6 +91,15 @@ const Dashboard: React.FC = () => {
 
     return (
         <div className="space-y-6">
+            <HelmetComponent
+                title="学生仪表板 | Student Dashboard"
+                description="查看您的课程预约、老师和支付信息"
+                keywords="学生仪表板, 课程预约, 老师, 支付信息"
+                ogTitle="学生仪表板 | Student Dashboard"
+                ogDescription="查看您的课程预约、老师和支付信息"
+                ogUrl={window.location.href}
+            />
+
             <h1 className="text-3xl font-bold">
                 学生仪表板
                 <span className="block mt-2">Student Dashboard</span>

@@ -8,32 +8,35 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import Api, { tutorApi } from '@/Api';
 
 interface AvailabilitySlot {
-    id: number;
     day: string;
     startTime: string;
     endTime: string;
-    isRecurring: boolean;
 }
 
-interface TimeBlock {
+interface Session {
     id: number;
-    date: string;
     startTime: string;
     endTime: string;
-    type: 'available' | 'unavailable';
-    note?: string;
+    status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+    studentId: number;
+}
+
+interface TutorProfile {
+    timezone: string;
+    lessonDuration: number;
 }
 
 const weekdays = [
-    { value: 'monday', label: 'Monday' },
-    { value: 'tuesday', label: 'Tuesday' },
-    { value: 'wednesday', label: 'Wednesday' },
-    { value: 'thursday', label: 'Thursday' },
-    { value: 'friday', label: 'Friday' },
-    { value: 'saturday', label: 'Saturday' },
-    { value: 'sunday', label: 'Sunday' },
+    { value: 'Monday', label: 'Monday' },
+    { value: 'Tuesday', label: 'Tuesday' },
+    { value: 'Wednesday', label: 'Wednesday' },
+    { value: 'Thursday', label: 'Thursday' },
+    { value: 'Friday', label: 'Friday' },
+    { value: 'Saturday', label: 'Saturday' },
+    { value: 'Sunday', label: 'Sunday' },
 ];
 
 const timeSlots = Array.from({ length: 24 * 4 }, (_, i) => {
@@ -45,91 +48,64 @@ const timeSlots = Array.from({ length: 24 * 4 }, (_, i) => {
 });
 
 const TutorAvailability: React.FC = () => {
-    const [recurringSlots, setRecurringSlots] = useState<AvailabilitySlot[]>([]);
-    const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
+    const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
+    const [sessions, setSessions] = useState<Session[]>([]);
+    const [tutorProfile, setTutorProfile] = useState<TutorProfile>({
+        timezone: '',
+        lessonDuration: 60
+    });
     const [isLoading, setIsLoading] = useState(false);
     const [addSlotDialogOpen, setAddSlotDialogOpen] = useState(false);
-    const [addBlockDialogOpen, setAddBlockDialogOpen] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
 
     const [slotForm, setSlotForm] = useState({
         day: '',
         startTime: '09:00',
-        endTime: '17:00',
-        isRecurring: true
+        endTime: '17:00'
     });
 
-    const [blockForm, setBlockForm] = useState({
-        date: format(new Date(), 'yyyy-MM-dd'),
-        startTime: '09:00',
-        endTime: '17:00',
-        type: 'available',
-        note: ''
-    });
-
-    // Simulate fetching availability data
+    // Fetch tutor's availability and scheduled sessions
     useEffect(() => {
         setIsLoading(true);
+        setErrorMessage('');
 
-        setTimeout(() => {
-            setRecurringSlots([
-                {
-                    id: 1,
-                    day: 'monday',
-                    startTime: '09:00',
-                    endTime: '12:00',
-                    isRecurring: true
-                },
-                {
-                    id: 2,
-                    day: 'tuesday',
-                    startTime: '13:00',
-                    endTime: '17:00',
-                    isRecurring: true
-                },
-                {
-                    id: 3,
-                    day: 'wednesday',
-                    startTime: '10:00',
-                    endTime: '15:00',
-                    isRecurring: true
-                },
-                {
-                    id: 4,
-                    day: 'friday',
-                    startTime: '09:00',
-                    endTime: '12:00',
-                    isRecurring: true
-                },
-                {
-                    id: 5,
-                    day: 'saturday',
-                    startTime: '14:00',
-                    endTime: '18:00',
-                    isRecurring: true
+        const fetchData = async () => {
+            try {
+                const { data: user } = await Api.get('auth/me');
+
+                if (!user) {
+                    setErrorMessage('User ID not found. Please log in again.');
+                    setIsLoading(false);
+                    return;
                 }
-            ]);
 
-            setTimeBlocks([
-                {
-                    id: 1,
-                    date: '2023-04-10',
-                    startTime: '09:00',
-                    endTime: '12:00',
-                    type: 'unavailable',
-                    note: 'Doctor appointment'
-                },
-                {
-                    id: 2,
-                    date: '2023-04-15',
-                    startTime: '14:00',
-                    endTime: '18:00',
-                    type: 'available',
-                    note: 'Special availability for exam preparation'
-                }
-            ]);
+                // Fetch tutor profile to get availability and other profile details
+                const tutorProfileResponse = await tutorApi.getTutorProfile(parseInt(user.id));
 
-            setIsLoading(false);
-        }, 500);
+                // Store timezone and lesson duration
+                setTutorProfile({
+                    timezone: tutorProfileResponse.timezone || 'UTC',
+                    lessonDuration: tutorProfileResponse.lessonDuration || 60
+                });
+
+                // Get schedule data
+                const scheduleResponse = await Api.get('/tutor/sessions/schedule');
+                setAvailabilitySlots(scheduleResponse.data);
+
+                // Fetch upcoming sessions to check for conflicts
+                const sessionsResponse = await Api.get('/tutor/sessions/schedule');
+                setSessions(sessionsResponse.data);
+
+                setIsLoading(false);
+            } catch (error) {
+                console.error('Error fetching availability data:', error);
+                setErrorMessage('Failed to load availability data. Please try again later.');
+                setIsLoading(false);
+                toast.error('Failed to load availability data');
+            }
+        };
+
+        fetchData();
     }, []);
 
     const handleSlotFormChange = (field: string, value: string | boolean) => {
@@ -139,14 +115,42 @@ const TutorAvailability: React.FC = () => {
         }));
     };
 
-    const handleBlockFormChange = (field: string, value: string) => {
-        setBlockForm(prev => ({
-            ...prev,
-            [field]: value
-        }));
+    // Check if a new time slot conflicts with any booked sessions
+    const checkSessionConflicts = (day: string, startTime: string, endTime: string): boolean => {
+        for (const session of sessions) {
+            const sessionDate = new Date(session.startTime);
+            const sessionDay = sessionDate.toLocaleDateString('en-US', { weekday: 'long' });
+            const sessionStartTime = sessionDate.toTimeString().substring(0, 5);
+            const sessionEndTime = new Date(session.endTime).toTimeString().substring(0, 5);
+
+            // For recurring slots, check day of week
+            if (sessionDay === day &&
+                ((startTime <= sessionStartTime && endTime > sessionStartTime) ||
+                    (startTime < sessionEndTime && endTime >= sessionEndTime) ||
+                    (startTime >= sessionStartTime && endTime <= sessionEndTime))) {
+                return true;
+            }
+        }
+        return false;
     };
 
-    const handleAddSlot = () => {
+    // Check if a new time slot overlaps with existing time slots on the same day
+    const checkTimeSlotOverlap = (day: string, startTime: string, endTime: string): boolean => {
+        // Filter slots for the given day
+        const daySlots = availabilitySlots.filter(slot => slot.day === day);
+
+        // Check for overlaps with any existing slot
+        for (const slot of daySlots) {
+            // Check if the new slot overlaps with this existing slot
+            if ((startTime < slot.endTime && endTime > slot.startTime)) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    const handleAddSlot = async () => {
         // Validate form
         if (!slotForm.day || !slotForm.startTime || !slotForm.endTime) {
             toast.error('Please fill in all required fields');
@@ -158,87 +162,103 @@ const TutorAvailability: React.FC = () => {
             return;
         }
 
+        // Check for conflicts with booked sessions
+        if (checkSessionConflicts(slotForm.day, slotForm.startTime, slotForm.endTime)) {
+            toast.error('This time slot conflicts with a booked session');
+            return;
+        }
+
+        // Check for overlaps with existing time slots
+        if (checkTimeSlotOverlap(slotForm.day, slotForm.startTime, slotForm.endTime)) {
+            toast.error('This time slot overlaps with an existing availability slot');
+            return;
+        }
+
         setIsLoading(true);
 
-        // Simulate API call
-        setTimeout(() => {
+        try {
             const newSlot = {
-                id: recurringSlots.length + 1,
-                ...slotForm
+                day: slotForm.day,
+                startTime: slotForm.startTime,
+                endTime: slotForm.endTime
             };
 
-            setRecurringSlots([...recurringSlots, newSlot]);
+            // Add to local state first for immediate feedback
+            const updatedSlots = [...availabilitySlots, newSlot];
+            setAvailabilitySlots(updatedSlots);
+
+            // Get the current user
+            const { data: user } = await Api.get('auth/me');
+            if (!user) {
+                throw new Error('User ID not found');
+            }
+
+            // Send to the API using the schedule update with actual profile data
+            await tutorApi.updateTutorSchedule(parseInt(user.id), {
+                timezone: tutorProfile.timezone,
+                lessonDuration: tutorProfile.lessonDuration,
+                schedule: updatedSlots
+            });
+
             setAddSlotDialogOpen(false);
-            setIsLoading(false);
             toast.success('Availability slot added successfully');
 
             // Reset form
             setSlotForm({
                 day: '',
                 startTime: '09:00',
-                endTime: '17:00',
-                isRecurring: true
+                endTime: '17:00'
             });
-        }, 500);
+        } catch (error) {
+            console.error('Error adding availability slot:', error);
+            toast.error('Failed to add availability slot');
+            // Revert the optimistic update
+            setAvailabilitySlots([...availabilitySlots]);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const handleAddBlock = () => {
-        // Validate form
-        if (!blockForm.date || !blockForm.startTime || !blockForm.endTime) {
-            toast.error('Please fill in all required fields');
-            return;
-        }
+    const handleDeleteSlot = async (index: number) => {
+        // Find the slot to check for conflicts
+        const slotToDelete = availabilitySlots[index];
+        if (!slotToDelete) return;
 
-        if (blockForm.startTime >= blockForm.endTime) {
-            toast.error('End time must be after start time');
+        // Check for conflicts with booked sessions
+        if (checkSessionConflicts(slotToDelete.day, slotToDelete.startTime, slotToDelete.endTime)) {
+            toast.error('Cannot delete a time slot that has booked sessions');
             return;
         }
 
         setIsLoading(true);
 
-        // Simulate API call
-        setTimeout(() => {
-            const newBlock = {
-                id: timeBlocks.length + 1,
-                ...blockForm
-            };
+        try {
+            // Update local state first for immediate feedback
+            const updatedSlots = availabilitySlots.filter((_, i) => i !== index);
+            setAvailabilitySlots(updatedSlots);
 
-            setTimeBlocks([...timeBlocks, newBlock]);
-            setAddBlockDialogOpen(false);
-            setIsLoading(false);
-            toast.success('Time block added successfully');
+            // Get the current user
+            const { data: user } = await Api.get('auth/me');
+            if (!user) {
+                throw new Error('User ID not found');
+            }
 
-            // Reset form
-            setBlockForm({
-                date: format(new Date(), 'yyyy-MM-dd'),
-                startTime: '09:00',
-                endTime: '17:00',
-                type: 'available',
-                note: ''
+            // Send to the API using the schedule update with actual profile data
+            await tutorApi.updateTutorSchedule(parseInt(user.id), {
+                timezone: tutorProfile.timezone,
+                lessonDuration: tutorProfile.lessonDuration,
+                schedule: updatedSlots
             });
-        }, 500);
-    };
 
-    const handleDeleteSlot = (id: number) => {
-        setIsLoading(true);
-
-        // Simulate API call
-        setTimeout(() => {
-            setRecurringSlots(recurringSlots.filter(slot => slot.id !== id));
-            setIsLoading(false);
             toast.success('Availability slot removed');
-        }, 500);
-    };
-
-    const handleDeleteBlock = (id: number) => {
-        setIsLoading(true);
-
-        // Simulate API call
-        setTimeout(() => {
-            setTimeBlocks(timeBlocks.filter(block => block.id !== id));
+        } catch (error) {
+            console.error('Error removing availability slot:', error);
+            toast.error('Failed to remove availability slot');
+            // Revert the optimistic update
+            setAvailabilitySlots([...availabilitySlots]);
+        } finally {
             setIsLoading(false);
-            toast.success('Time block removed');
-        }, 500);
+        }
     };
 
     const formatTime = (time: string) => {
@@ -252,11 +272,6 @@ const TutorAvailability: React.FC = () => {
         return weekdays.find(w => w.value === day)?.label || day;
     };
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return format(date, 'MMM d, yyyy');
-    };
-
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -264,162 +279,80 @@ const TutorAvailability: React.FC = () => {
             </div>
 
             <p className="text-gray-500">
-                Set your regular teaching hours and manage exceptions to your schedule.
-                Students will only be able to book sessions during your available time slots.
+                Set your regular teaching hours. Students will only be able to book sessions during your available time slots.
             </p>
 
-            <Tabs defaultValue="recurring" className="w-full">
-                <TabsList className="mb-4">
-                    <TabsTrigger value="recurring">
-                        Weekly Schedule
-                    </TabsTrigger>
-                    <TabsTrigger value="exceptions">
-                        Exceptions
-                    </TabsTrigger>
-                </TabsList>
+            {errorMessage && (
+                <div className="bg-red-50 p-4 rounded-md text-red-800 mb-4">
+                    {errorMessage}
+                </div>
+            )}
 
-                <TabsContent value="recurring">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-medium">Weekly Availability</h2>
-                        <Button onClick={() => setAddSlotDialogOpen(true)}>
-                            <i className="far fa-plus mr-2"></i>
-                            Add Time Slot
-                        </Button>
-                    </div>
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-medium">Weekly Schedule</h2>
+                <Button onClick={() => setAddSlotDialogOpen(true)}>
+                    <i className="far fa-plus mr-2"></i>
+                    Add Time Slot
+                </Button>
+            </div>
 
-                    {isLoading && recurringSlots.length === 0 ? (
-                        <div className="flex justify-center py-10">
-                            <i className="far fa-spinner-third fa-spin text-2xl text-gray-400"></i>
-                        </div>
-                    ) : recurringSlots.length > 0 ? (
-                        <div className="grid grid-cols-1 gap-4">
-                            {weekdays.map(day => {
-                                const daySlots = recurringSlots.filter(slot => slot.day === day.value);
+            {isLoading && availabilitySlots.length === 0 ? (
+                <div className="flex justify-center py-10">
+                    <i className="far fa-spinner-third fa-spin text-2xl text-gray-400"></i>
+                </div>
+            ) : availabilitySlots.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4">
+                    {weekdays.map(day => {
+                        const daySlots = availabilitySlots.filter(slot => slot.day === day.value);
 
-                                return (
-                                    <Card key={day.value} className={daySlots.length > 0 ? 'border-blue-200' : ''}>
-                                        <CardHeader className="pb-2">
-                                            <CardTitle className="text-lg">{day.label}</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            {daySlots.length > 0 ? (
-                                                <div className="space-y-2">
-                                                    {daySlots.map(slot => (
-                                                        <div key={slot.id} className="flex items-center justify-between p-2 bg-blue-50 rounded-md">
-                                                            <div className="flex items-center">
-                                                                <i className="far fa-clock text-blue-600 mr-2"></i>
-                                                                <span>
-                                                                    {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
-                                                                </span>
-                                                            </div>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                                onClick={() => handleDeleteSlot(slot.id)}
-                                                            >
-                                                                <i className="far fa-trash-alt"></i>
-                                                            </Button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <div className="text-center py-4 text-gray-500">
-                                                    Not available
-                                                </div>
-                                            )}
-                                        </CardContent>
-                                    </Card>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <Card>
-                            <CardContent className="flex flex-col items-center justify-center py-10">
-                                <i className="far fa-calendar-times text-5xl text-gray-300 mb-4"></i>
-                                <p className="text-gray-500">No availability slots set</p>
-                                <Button className="mt-4" onClick={() => setAddSlotDialogOpen(true)}>
-                                    Set Your Availability
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    )}
-                </TabsContent>
-
-                <TabsContent value="exceptions">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-medium">Schedule Exceptions</h2>
-                        <Button onClick={() => setAddBlockDialogOpen(true)}>
-                            <i className="far fa-plus mr-2"></i>
-                            Add Exception
-                        </Button>
-                    </div>
-
-                    {isLoading && timeBlocks.length === 0 ? (
-                        <div className="flex justify-center py-10">
-                            <i className="far fa-spinner-third fa-spin text-2xl text-gray-400"></i>
-                        </div>
-                    ) : timeBlocks.length > 0 ? (
-                        <div className="grid grid-cols-1 gap-4">
-                            {timeBlocks.map(block => (
-                                <Card
-                                    key={block.id}
-                                    className={block.type === 'available' ? 'border-green-200' : 'border-red-200'}
-                                >
-                                    <CardContent className="p-4">
-                                        <div className="flex items-start justify-between">
-                                            <div>
-                                                <div className="flex items-center">
-                                                    <i className={`far fa-calendar-${block.type === 'available' ? 'plus text-green-600' : 'minus text-red-600'} mr-2`}></i>
-                                                    <h3 className="font-medium">{formatDate(block.date)}</h3>
-                                                </div>
-
-                                                <div className="mt-1 text-gray-600">
-                                                    {formatTime(block.startTime)} - {formatTime(block.endTime)}
-                                                </div>
-
-                                                {block.note && (
-                                                    <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
-                                                        {block.note}
+                        return (
+                            <Card key={day.value} className={daySlots.length > 0 ? 'border-blue-200' : ''}>
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-lg">{day.label}</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    {daySlots.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {daySlots.map((slot, index) => (
+                                                <div key={index} className="flex items-center justify-between p-2 bg-blue-50 rounded-md">
+                                                    <div className="flex items-center">
+                                                        <i className="far fa-clock text-blue-600 mr-2"></i>
+                                                        <span>
+                                                            {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
+                                                        </span>
                                                     </div>
-                                                )}
-                                            </div>
-
-                                            <div className="flex items-center gap-2">
-                                                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${block.type === 'available'
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : 'bg-red-100 text-red-800'
-                                                    }`}>
-                                                    {block.type === 'available' ? 'Available' : 'Unavailable'}
-                                                </span>
-
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                    onClick={() => handleDeleteBlock(block.id)}
-                                                >
-                                                    <i className="far fa-trash-alt"></i>
-                                                </Button>
-                                            </div>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                        onClick={() => handleDeleteSlot(availabilitySlots.indexOf(slot))}
+                                                    >
+                                                        <i className="far fa-trash-alt"></i>
+                                                    </Button>
+                                                </div>
+                                            ))}
                                         </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    ) : (
-                        <Card>
-                            <CardContent className="flex flex-col items-center justify-center py-10">
-                                <i className="far fa-calendar-alt text-5xl text-gray-300 mb-4"></i>
-                                <p className="text-gray-500">No schedule exceptions set</p>
-                                <Button className="mt-4" onClick={() => setAddBlockDialogOpen(true)}>
-                                    Add Exception
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    )}
-                </TabsContent>
-            </Tabs>
+                                    ) : (
+                                        <div className="text-center py-4 text-gray-500">
+                                            Not available
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
+                </div>
+            ) : (
+                <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-10">
+                        <i className="far fa-calendar-times text-5xl text-gray-300 mb-4"></i>
+                        <p className="text-gray-500">No availability slots set</p>
+                        <Button className="mt-4" onClick={() => setAddSlotDialogOpen(true)}>
+                            Set Your Availability
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Add Availability Slot Dialog */}
             <Dialog open={addSlotDialogOpen} onOpenChange={setAddSlotDialogOpen}>
@@ -487,17 +420,6 @@ const TutorAvailability: React.FC = () => {
                                 </Select>
                             </div>
                         </div>
-
-                        <div className="flex items-center space-x-2">
-                            <Checkbox
-                                id="isRecurring"
-                                checked={slotForm.isRecurring}
-                                onCheckedChange={(checked) =>
-                                    handleSlotFormChange('isRecurring', checked === true)
-                                }
-                            />
-                            <Label htmlFor="isRecurring">Repeat weekly</Label>
-                        </div>
                     </div>
 
                     <DialogFooter>
@@ -509,108 +431,6 @@ const TutorAvailability: React.FC = () => {
                                     Adding...
                                 </>
                             ) : 'Add Slot'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Add Time Block Dialog */}
-            <Dialog open={addBlockDialogOpen} onOpenChange={setAddBlockDialogOpen}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>Add Schedule Exception</DialogTitle>
-                    </DialogHeader>
-
-                    <div className="grid gap-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="date">Date</Label>
-                            <input
-                                type="date"
-                                id="date"
-                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                value={blockForm.date}
-                                onChange={(e) => handleBlockFormChange('date', e.target.value)}
-                                min={format(new Date(), 'yyyy-MM-dd')}
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="startTime">Start Time</Label>
-                                <Select
-                                    value={blockForm.startTime}
-                                    onValueChange={(value) => handleBlockFormChange('startTime', value)}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select time" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-[200px] overflow-y-auto">
-                                        {timeSlots.map(time => (
-                                            <SelectItem key={`block-start-${time}`} value={time}>
-                                                {formatTime(time)}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="endTime">End Time</Label>
-                                <Select
-                                    value={blockForm.endTime}
-                                    onValueChange={(value) => handleBlockFormChange('endTime', value)}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select time" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-[200px] overflow-y-auto">
-                                        {timeSlots.map(time => (
-                                            <SelectItem key={`block-end-${time}`} value={time}>
-                                                {formatTime(time)}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="type">Type</Label>
-                            <Select
-                                value={blockForm.type}
-                                onValueChange={(value) => handleBlockFormChange('type', value)}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="available">Available (Extra Hours)</SelectItem>
-                                    <SelectItem value="unavailable">Unavailable (Time Off)</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="note">Note (Optional)</Label>
-                            <textarea
-                                id="note"
-                                className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="Add a note about this exception"
-                                value={blockForm.note}
-                                onChange={(e) => handleBlockFormChange('note', e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setAddBlockDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleAddBlock} disabled={isLoading}>
-                            {isLoading ? (
-                                <>
-                                    <i className="far fa-spinner-third fa-spin mr-2"></i>
-                                    Adding...
-                                </>
-                            ) : 'Add Exception'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

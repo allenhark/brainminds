@@ -5,11 +5,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 import toast from 'react-hot-toast';
-import { tutorApi, generateDicebearAvatar } from '@/Api';
+import Api, { tutorApi, generateDicebearAvatar } from '@/Api';
 import { useParams } from 'react-router-dom';
-const url = 'http://localhost:3000/';
-
+import { url } from '@/config';
+import HelmetComponent from '@/components/HelmetComponent';
+const CHINESE_TIMEZONES = [
+    { value: 'CST', label: '中国标准时间 (UTC+8)', labelEn: 'China Standard Time' },
+    { value: 'XJT', label: '新疆时间 (UTC+6)', labelEn: 'Xinjiang Time' },
+    { value: 'HKT', label: '香港时间 (UTC+8)', labelEn: 'Hong Kong Time' },
+    { value: 'TWT', label: '台湾时间 (UTC+8)', labelEn: 'Taiwan Time' }
+];
 interface TutorProfileData {
     firstName: string;
     lastName: string;
@@ -21,22 +29,12 @@ interface TutorProfileData {
     teachingStyle: string;
     teachingMaterials: string;
     aboutMe: string;
-    availability: string;
     timezone: string;
     lessonDuration: number;
-}
-
-interface AvailabilitySchedule {
-    day: string;
-    slots: {
-        start: string;
-        end: string;
-    }[];
+    schedule?: any[];
 }
 
 const TutorProfile: React.FC = () => {
-    const { userId } = useParams<{ userId: string }>();
-    const [originalData, setOriginalData] = useState<any>(null);
     const [profileData, setProfileData] = useState<TutorProfileData>({
         firstName: '',
         lastName: '',
@@ -48,43 +46,31 @@ const TutorProfile: React.FC = () => {
         teachingStyle: '',
         teachingMaterials: '',
         aboutMe: '',
-        availability: '',
         timezone: '',
         lessonDuration: 60,
     });
 
     const [isLoading, setIsLoading] = useState(false);
     const [avatarPreview, setAvatarPreview] = useState('');
-    const [availabilitySchedule, setAvailabilitySchedule] = useState<AvailabilitySchedule[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [dataFetched, setDataFetched] = useState(false);
 
     // Fetch tutor profile data
     useEffect(() => {
         const fetchTutorProfile = async () => {
-            if (!userId) return;
-
             setIsLoading(true);
             try {
-                const response = await tutorApi.getTutorProfile(parseInt(userId));
-                console.log('Fetched tutor profile:', response);
+                // Get current user ID from the auth endpoint
+                const { data: user } = await Api.get('/auth/me');
 
-                // Store original data for comparison
-                setOriginalData(response);
-
-                // Parse the availability data
-                let parsedAvailability: AvailabilitySchedule[] = [];
-                try {
-                    if (response.availability) {
-                        parsedAvailability = JSON.parse(response.availability);
-                    }
-                } catch (error) {
-                    console.error('Error parsing availability:', error);
+                if (!user?.id) {
+                    toast.error('Unable to retrieve user information');
+                    return;
                 }
 
-                setAvailabilitySchedule(parsedAvailability);
+                // Fetch tutor profile using the user ID
+                const response = await tutorApi.getTutorProfile(user.id);
 
-                // Set profile data
                 setProfileData({
                     firstName: response.user?.firstName || '',
                     lastName: response.user?.lastName || '',
@@ -96,16 +82,16 @@ const TutorProfile: React.FC = () => {
                     teachingStyle: response.teachingStyle || '',
                     teachingMaterials: response.teachingMaterials || '',
                     aboutMe: response.aboutMe || '',
-                    availability: response.availability || '',
                     timezone: response.timezone || '',
                     lessonDuration: response.lessonDuration || 60,
+                    schedule: response.schedule || [],
                 });
 
                 // Set avatar preview - handle different types of paths and use dicebear as fallback
                 if (response.user?.avatar) {
                     const avatarUrl = response.user.avatar.startsWith('http')
                         ? response.user.avatar
-                        : `${url}${response.user.avatar}`;
+                        : `${url}/${response.user.avatar}`;
                     setAvatarPreview(avatarUrl);
                 } else {
                     // Use dicebear for fallback avatar
@@ -123,7 +109,7 @@ const TutorProfile: React.FC = () => {
         };
 
         fetchTutorProfile();
-    }, [userId]);
+    }, []);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -142,7 +128,7 @@ const TutorProfile: React.FC = () => {
 
     const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file || !userId) return;
+        if (!file) return;
 
         try {
             setIsSaving(true);
@@ -154,8 +140,14 @@ const TutorProfile: React.FC = () => {
             };
             reader.readAsDataURL(file);
 
+            // Get current user ID
+            const { data: user } = await Api.get('/auth/me');
+            if (!user?.id) {
+                throw new Error('Unable to retrieve user information');
+            }
+
             // Upload the file to the server
-            const response = await tutorApi.uploadTutorAvatar(parseInt(userId), file);
+            const response = await tutorApi.uploadTutorAvatar(user.id, file);
 
             // Update the avatar in the profile data
             setProfileData(prev => ({
@@ -166,7 +158,7 @@ const TutorProfile: React.FC = () => {
             // Update avatar preview with the server response
             const avatarUrl = response.avatar.startsWith('http')
                 ? response.avatar
-                : `${url}${response.avatar}`;
+                : `${url}/${response.avatar}`;
             setAvatarPreview(avatarUrl);
 
             toast.success('Avatar updated successfully');
@@ -178,7 +170,7 @@ const TutorProfile: React.FC = () => {
             if (profileData.avatar) {
                 const avatarUrl = profileData.avatar.startsWith('http')
                     ? profileData.avatar
-                    : `${url}${profileData.avatar}`;
+                    : `${url}/${profileData.avatar}`;
                 setAvatarPreview(avatarUrl);
             } else {
                 const seed = `${profileData.firstName}-${profileData.lastName}-${profileData.email}`;
@@ -189,78 +181,26 @@ const TutorProfile: React.FC = () => {
         }
     };
 
-    const handleAvailabilityChange = (day: string, index: number, field: 'start' | 'end', value: string) => {
-        setAvailabilitySchedule(prev => {
-            const newSchedule = [...prev];
-            const dayIndex = newSchedule.findIndex(d => d.day === day);
-
-            if (dayIndex === -1) {
-                // Day not found, add it
-                newSchedule.push({
-                    day,
-                    slots: [{ start: '', end: '' }]
-                });
-                return newSchedule;
-            }
-
-            // Update the slot
-            if (!newSchedule[dayIndex].slots[index]) {
-                newSchedule[dayIndex].slots[index] = { start: '', end: '' };
-            }
-
-            newSchedule[dayIndex].slots[index][field] = value;
-            return newSchedule;
-        });
-    };
-
-    const addTimeSlot = (day: string) => {
-        setAvailabilitySchedule(prev => {
-            const newSchedule = [...prev];
-            const dayIndex = newSchedule.findIndex(d => d.day === day);
-
-            if (dayIndex === -1) {
-                // Day not found, add it
-                newSchedule.push({
-                    day,
-                    slots: [{ start: '', end: '' }]
-                });
-            } else {
-                // Add a new slot to the day
-                newSchedule[dayIndex].slots.push({ start: '', end: '' });
-            }
-
-            return newSchedule;
-        });
-    };
-
-    const removeTimeSlot = (day: string, index: number) => {
-        setAvailabilitySchedule(prev => {
-            const newSchedule = [...prev];
-            const dayIndex = newSchedule.findIndex(d => d.day === day);
-
-            if (dayIndex !== -1) {
-                // Remove the slot
-                newSchedule[dayIndex].slots.splice(index, 1);
-
-                // If no slots left, remove the day
-                if (newSchedule[dayIndex].slots.length === 0) {
-                    newSchedule.splice(dayIndex, 1);
-                }
-            }
-
-            return newSchedule;
-        });
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!userId) return;
-
         setIsSaving(true);
 
         try {
+            // Get current user ID
+            const { data: user } = await Api.get('/auth/me');
+            if (!user?.id) {
+                throw new Error('Unable to retrieve user information');
+            }
+
+            // Update basic profile data
+            await Api.put('/user/profile', {
+                firstName: profileData.firstName,
+                lastName: profileData.lastName,
+                phone: profileData.phone
+            });
+
             // Update education information
-            await tutorApi.updateTutorEducation(parseInt(userId), {
+            await tutorApi.updateTutorEducation(user.id, {
                 educationLevel: profileData.educationLevel,
                 teachingStyle: profileData.teachingStyle,
                 teachingMaterials: profileData.teachingMaterials,
@@ -268,18 +208,39 @@ const TutorProfile: React.FC = () => {
                 teachingCredentials: profileData.teachingCredentials
             });
 
-            // Update schedule
-            await tutorApi.updateTutorSchedule(parseInt(userId), {
+            // Update schedule information (timezone and lesson duration)
+            const scheduleData: any = {
                 timezone: profileData.timezone,
-                lessonDuration: parseInt(String(profileData.lessonDuration)),
-                schedule: availabilitySchedule
-            });
+                lessonDuration: profileData.lessonDuration
+            };
+
+            // Only include schedule if it's available and not empty
+            if (profileData.schedule && profileData.schedule.length > 0) {
+                scheduleData.schedule = profileData.schedule;
+            }
+
+            await tutorApi.updateTutorSchedule(user.id, scheduleData);
 
             toast.success('Profile updated successfully');
 
-            // Refresh data after update
-            const response = await tutorApi.getTutorProfile(parseInt(userId));
-            setOriginalData(response);
+            // Refresh the profile data but keep the avatar unchanged
+            const updatedProfile = await tutorApi.getTutorProfile(user.id);
+            setProfileData(prev => ({
+                firstName: updatedProfile.user?.firstName || '',
+                lastName: updatedProfile.user?.lastName || '',
+                email: updatedProfile.user?.email || '',
+                phone: updatedProfile.user?.phone || '',
+                avatar: prev.avatar, // Keep the current avatar
+                educationLevel: updatedProfile.educationLevel || '',
+                teachingCredentials: updatedProfile.teachingCredentials || '',
+                teachingStyle: updatedProfile.teachingStyle || '',
+                teachingMaterials: updatedProfile.teachingMaterials || '',
+                aboutMe: updatedProfile.aboutMe || '',
+                timezone: updatedProfile.timezone || '',
+                lessonDuration: updatedProfile.lessonDuration || 60,
+                schedule: updatedProfile.schedule || [],
+            }));
+
         } catch (error) {
             console.error('Error updating profile:', error);
             toast.error('Failed to update profile');
@@ -298,35 +259,21 @@ const TutorProfile: React.FC = () => {
 
     return (
         <div className="space-y-6">
+            <HelmetComponent
+                title="Tutor Profile Management"
+                description="Manage your profile information"
+            />
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold">Profile Management</h1>
+                <Button type="submit" onClick={handleSubmit} disabled={isSaving}>
+                    {isSaving ? (
+                        <>
+                            <i className="far fa-spinner-third fa-spin mr-2"></i>
+                            Saving...
+                        </>
+                    ) : 'Save Changes'}
+                </Button>
             </div>
-
-            {dataFetched && originalData && (
-                <div className="bg-blue-50 p-4 rounded-md mb-6">
-                    <h2 className="font-semibold text-blue-700 mb-2">Current Profile Information</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <p><strong>Name:</strong> {originalData.user?.firstName} {originalData.user?.lastName}</p>
-                            <p><strong>Email:</strong> {originalData.user?.email}</p>
-                            <p><strong>Phone:</strong> {originalData.user?.phone || 'Not set'}</p>
-                            <p><strong>Education Level:</strong> {originalData.educationLevel || 'Not set'}</p>
-                            <p><strong>Teaching Credentials:</strong> {originalData.teachingCredentials || 'Not set'}</p>
-                        </div>
-                        <div>
-                            <p><strong>Teaching Style:</strong> {originalData.teachingStyle || 'Not set'}</p>
-                            <p><strong>Materials:</strong> {originalData.teachingMaterials || 'Not set'}</p>
-                            <p><strong>Timezone:</strong> {originalData.timezone || 'Not set'}</p>
-                            <p><strong>Lesson Duration:</strong> {originalData.lessonDuration ? `${originalData.lessonDuration} minutes` : 'Not set'}</p>
-                        </div>
-                    </div>
-                    {originalData.aboutMe && (
-                        <div className="mt-2">
-                            <p><strong>About Me:</strong> {originalData.aboutMe}</p>
-                        </div>
-                    )}
-                </div>
-            )}
 
             <form onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -338,9 +285,9 @@ const TutorProfile: React.FC = () => {
                         </CardHeader>
                         <CardContent className="flex flex-col items-center">
                             <div className="w-32 h-32 rounded-full overflow-hidden mb-4 border">
-                                {avatarPreview ? (
+                                {profileData.avatar ? (
                                     <img
-                                        src={avatarPreview}
+                                        src={`${url}/${profileData.avatar}`}
                                         alt="Profile"
                                         className="w-full h-full object-cover"
                                         onError={(e) => {
@@ -420,12 +367,18 @@ const TutorProfile: React.FC = () => {
 
                                 <div className="space-y-2">
                                     <Label htmlFor="phone">Phone Number</Label>
-                                    <Input
-                                        id="phone"
-                                        name="phone"
+                                    <PhoneInput
+                                        country={'cn'}
                                         value={profileData.phone}
-                                        onChange={handleInputChange}
-                                        placeholder="Phone Number"
+                                        onChange={(phone) => handleInputChange({ target: { name: 'phone', value: phone } } as any)}
+                                        inputProps={{
+                                            id: 'phone',
+                                            name: 'phone',
+                                            placeholder: 'Phone Number'
+                                        }}
+                                        containerClass="w-full"
+                                        inputClass="w-full h-10 px-3 py-2 border rounded-md"
+                                        buttonClass="h-10 border rounded-l-md"
                                     />
                                 </div>
                             </div>
@@ -494,6 +447,44 @@ const TutorProfile: React.FC = () => {
                                 </div>
                             </div>
 
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="lessonDuration">Lesson Duration</Label>
+                                    <Select
+                                        value={profileData.lessonDuration.toString()}
+                                        onValueChange={(value) => handleSelectChange('lessonDuration', value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select lesson duration" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="30">30 minutes</SelectItem>
+                                            <SelectItem value="45">45 minutes</SelectItem>
+                                            <SelectItem value="60">60 minutes</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="timezone">Timezone</Label>
+                                    <Select
+                                        value={profileData.timezone}
+                                        onValueChange={(value) => handleSelectChange('timezone', value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select your timezone" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {CHINESE_TIMEZONES.map((tz) => (
+                                                <SelectItem key={tz.value} value={tz.value}>
+                                                    {tz.label} ({tz.labelEn})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
                             <div className="space-y-2">
                                 <Label htmlFor="aboutMe">About Me</Label>
                                 <Textarea
@@ -506,134 +497,6 @@ const TutorProfile: React.FC = () => {
                                 />
                             </div>
                         </CardContent>
-                    </Card>
-
-                    {/* Availability & Schedule */}
-                    <Card className="md:col-span-3">
-                        <CardHeader>
-                            <CardTitle>Availability & Schedule</CardTitle>
-                            <CardDescription>Set your teaching schedule</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="timezone">Timezone</Label>
-                                    <Select
-                                        value={profileData.timezone}
-                                        onValueChange={(value) => handleSelectChange('timezone', value)}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select your timezone" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="UTC-12">UTC-12</SelectItem>
-                                            <SelectItem value="UTC-11">UTC-11</SelectItem>
-                                            <SelectItem value="UTC-10">UTC-10</SelectItem>
-                                            <SelectItem value="UTC-9">UTC-9</SelectItem>
-                                            <SelectItem value="UTC-8">UTC-8 (PST)</SelectItem>
-                                            <SelectItem value="UTC-7">UTC-7 (MST)</SelectItem>
-                                            <SelectItem value="UTC-6">UTC-6 (CST)</SelectItem>
-                                            <SelectItem value="UTC-5">UTC-5 (EST)</SelectItem>
-                                            <SelectItem value="UTC-4">UTC-4</SelectItem>
-                                            <SelectItem value="UTC-3">UTC-3</SelectItem>
-                                            <SelectItem value="UTC-2">UTC-2</SelectItem>
-                                            <SelectItem value="UTC-1">UTC-1</SelectItem>
-                                            <SelectItem value="UTC+0">UTC+0</SelectItem>
-                                            <SelectItem value="UTC+1">UTC+1 (CET)</SelectItem>
-                                            <SelectItem value="UTC+2">UTC+2</SelectItem>
-                                            <SelectItem value="UTC+3">UTC+3</SelectItem>
-                                            <SelectItem value="UTC+4">UTC+4</SelectItem>
-                                            <SelectItem value="UTC+5">UTC+5</SelectItem>
-                                            <SelectItem value="UTC+6">UTC+6</SelectItem>
-                                            <SelectItem value="UTC+7">UTC+7</SelectItem>
-                                            <SelectItem value="UTC+8">UTC+8 (CST)</SelectItem>
-                                            <SelectItem value="UTC+9">UTC+9 (JST)</SelectItem>
-                                            <SelectItem value="UTC+10">UTC+10</SelectItem>
-                                            <SelectItem value="UTC+11">UTC+11</SelectItem>
-                                            <SelectItem value="UTC+12">UTC+12</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="lessonDuration">Default Lesson Duration (minutes)</Label>
-                                    <Select
-                                        value={String(profileData.lessonDuration)}
-                                        onValueChange={(value) => handleSelectChange('lessonDuration', value)}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select lesson duration" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="30">30 minutes</SelectItem>
-                                            <SelectItem value="45">45 minutes</SelectItem>
-                                            <SelectItem value="60">60 minutes</SelectItem>
-                                            <SelectItem value="90">90 minutes</SelectItem>
-                                            <SelectItem value="120">120 minutes</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <Label>Weekly Schedule</Label>
-                                <div className="space-y-4">
-                                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => {
-                                        const daySchedule = availabilitySchedule.find(d => d.day === day);
-                                        return (
-                                            <div key={day} className="border rounded-md p-4">
-                                                <h3 className="font-medium mb-2">{day}</h3>
-                                                {daySchedule?.slots.map((slot, index) => (
-                                                    <div key={index} className="flex items-center gap-2 mb-2">
-                                                        <Input
-                                                            type="time"
-                                                            value={slot.start}
-                                                            onChange={(e) => handleAvailabilityChange(day, index, 'start', e.target.value)}
-                                                            className="w-32"
-                                                        />
-                                                        <span>to</span>
-                                                        <Input
-                                                            type="time"
-                                                            value={slot.end}
-                                                            onChange={(e) => handleAvailabilityChange(day, index, 'end', e.target.value)}
-                                                            className="w-32"
-                                                        />
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => removeTimeSlot(day, index)}
-                                                        >
-                                                            <i className="far fa-trash-alt"></i>
-                                                        </Button>
-                                                    </div>
-                                                ))}
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => addTimeSlot(day)}
-                                                    className="mt-2"
-                                                >
-                                                    <i className="far fa-plus mr-2"></i>
-                                                    Add Time Slot
-                                                </Button>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </CardContent>
-                        <CardFooter>
-                            <Button type="submit" disabled={isSaving}>
-                                {isSaving ? (
-                                    <>
-                                        <i className="far fa-spinner-third fa-spin mr-2"></i>
-                                        Saving...
-                                    </>
-                                ) : 'Save Changes'}
-                            </Button>
-                        </CardFooter>
                     </Card>
                 </div>
             </form>

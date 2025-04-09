@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { userApi } from '@/Api';
 import toast from 'react-hot-toast';
+import HelmetComponent from '@/components/HelmetComponent';
 
 interface UserProfile {
     firstName: string;
@@ -102,6 +103,15 @@ const StudySettings: React.FC = () => {
 
     return (
         <div className="space-y-6">
+            <HelmetComponent
+                title="设置 | Settings"
+                description="管理您的账户设置"
+                keywords="设置, 账户, 管理"
+                ogTitle="设置 | Settings"
+                ogDescription="管理您的账户设置"
+                ogUrl={window.location.href}
+            />
+
             <h1 className="text-3xl font-bold">
                 设置
                 <span className="block mt-2">Settings</span>

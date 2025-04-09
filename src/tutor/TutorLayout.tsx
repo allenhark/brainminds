@@ -48,15 +48,14 @@ const TutorLayout: React.FC = () => {
         {
             category: 'Teaching',
             items: [
-                { icon: 'far fa-users', label: 'My Students', path: '/my-tutor/students' },
                 { icon: 'far fa-calendar-alt', label: 'Sessions', path: '/my-tutor/sessions' },
-                { icon: 'far fa-video', label: 'Class Links', path: '/my-tutor/class-links' }
+                // { icon: 'far fa-video', label: 'Class Links', path: '/my-tutor/class-links' }
             ]
         },
         {
             category: 'Communication',
             items: [
-                { icon: 'far fa-comment-dots', label: 'Messages', path: '/my-tutor/messages' },
+                // { icon: 'far fa-comment-dots', label: 'Messages', path: '/my-tutor/messages' },
                 { icon: 'far fa-bell', label: 'Notifications', path: '/my-tutor/notifications' }
             ]
         },
@@ -64,8 +63,7 @@ const TutorLayout: React.FC = () => {
             category: 'Account',
             items: [
                 { icon: 'far fa-user-circle', label: 'Profile', path: '/my-tutor/profile' },
-                { icon: 'far fa-clock', label: 'Availability', path: '/my-tutor/availability' },
-                { icon: 'far fa-credit-card', label: 'Payments', path: '/my-tutor/payments' }
+                { icon: 'far fa-clock', label: 'Availability', path: '/my-tutor/availability' }
             ]
         }
     ];

@@ -52,13 +52,13 @@ export default function Home() {
                     <div className="absolute right-0 top-0 bottom-0 hidden lg:flex items-center z-0">
                         <div className="flex gap-4 h-[600px]">
                             <div className="w-48 rounded-3xl overflow-hidden h-[450px]">
-                                <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e" alt="" className="w-full h-full object-cover" />
+                                <img src="/tutor1.jpeg" alt="" className="w-full h-full object-cover" />
                             </div>
                             <div className="w-48 rounded-3xl overflow-hidden h-[500px] mt-24">
-                                <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330" alt="" className="w-full h-full object-cover" />
+                                <img src="/tutor2.jpeg" alt="" className="w-full h-full object-cover" />
                             </div>
                             <div className="w-48 rounded-3xl overflow-hidden h-[400px] mt-12">
-                                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d" alt="" className="w-full h-full object-cover" />
+                                <img src="/tutor3.jpeg" alt="" className="w-full h-full object-cover" />
                             </div>
                         </div>
                     </div>

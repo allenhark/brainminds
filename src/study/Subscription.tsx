@@ -14,6 +14,7 @@ import wsService from '@/services/wsService';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { url } from '@/config';
+import HelmetComponent from '@/components/HelmetComponent';
 
 // Types
 interface Message {
@@ -495,6 +496,15 @@ const Subscription: React.FC = () => {
 
     return (
         <div className="container max-w-6xl mx-auto px-4 py-8">
+            <HelmetComponent
+                title="订阅管理 | Subscription Management"
+                description="管理您的订阅和支付信息"
+                keywords="订阅, 支付, 管理"
+                ogTitle="订阅管理 | Subscription Management"
+                ogDescription="管理您的订阅和支付信息"
+                ogUrl={window.location.href}
+            />
+
             <div className="max-w-3xl mx-auto">
                 <div className="text-center mb-8">
                     <h1 className="text-4xl font-bold mb-4">
