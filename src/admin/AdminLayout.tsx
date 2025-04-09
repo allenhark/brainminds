@@ -2,11 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
+import Api from '@/Api';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 const AdminLayout: React.FC = () => {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [pageTitle, setPageTitle] = useState('');
+    const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [isUpdating, setIsUpdating] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -83,6 +92,53 @@ const AdminLayout: React.FC = () => {
         // Implement logout logic
         toast.success('Logged out successfully');
         navigate('/login');
+    };
+
+    const openPasswordDialog = () => {
+        setPasswordDialogOpen(true);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+    };
+
+    const handleUpdatePassword = async () => {
+        // Validate passwords
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            toast.error('All fields are required');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            toast.error('New passwords do not match');
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            toast.error('Password must be at least 6 characters');
+            return;
+        }
+
+        try {
+            setIsUpdating(true);
+            // Get admin ID from localStorage or context
+            const adminId = localStorage.getItem('userId') || '1'; // Default to 1 if not found
+
+            const response = await Api.put(`/admin/update-password`, {
+                currentPassword,
+                newPassword
+            });
+
+            if (response.data.success) {
+                toast.success('Password updated successfully');
+                setPasswordDialogOpen(false);
+            } else {
+                toast.error(response.data.message || 'Failed to update password');
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to update password');
+        } finally {
+            setIsUpdating(false);
+        }
     };
 
     return (
@@ -208,6 +264,9 @@ const AdminLayout: React.FC = () => {
                                 <i className="far fa-bell h-5 w-5"></i>
                                 <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500"></span>
                             </Button>
+                            <Button variant="ghost" size="icon" onClick={openPasswordDialog}>
+                                <i className="far fa-key h-5 w-5"></i>
+                            </Button>
                             <Button variant="ghost" onClick={handleLogout}>
                                 Logout
                             </Button>
@@ -220,6 +279,67 @@ const AdminLayout: React.FC = () => {
                     <Outlet />
                 </main>
             </div>
+
+            {/* Password Update Dialog */}
+            <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Update Password</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="current-password" className="text-right">
+                                Current Password
+                            </Label>
+                            <Input
+                                id="current-password"
+                                type="password"
+                                value={currentPassword}
+                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                className="col-span-3"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="new-password" className="text-right">
+                                New Password
+                            </Label>
+                            <Input
+                                id="new-password"
+                                type="password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                className="col-span-3"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="confirm-password" className="text-right">
+                                Confirm Password
+                            </Label>
+                            <Input
+                                id="confirm-password"
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                className="col-span-3"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setPasswordDialogOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleUpdatePassword}
+                            disabled={isUpdating}
+                        >
+                            {isUpdating ? 'Updating...' : 'Update Password'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };
