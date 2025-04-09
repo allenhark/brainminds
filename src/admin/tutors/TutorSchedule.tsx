@@ -4,6 +4,7 @@ import Api from '@/Api';
 import { Button } from '@/components/ui/button';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 import toast from 'react-hot-toast';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 type Tutor = {
     id: number;
@@ -28,12 +29,28 @@ type Session = {
     student: Student;
 };
 
+type AvailabilitySlot = {
+    day: string;
+    startTime: string;
+    endTime: string;
+};
+
 type ScheduleData = {
     tutor: Tutor;
     timezone: string;
-    availability: any[];
+    availability: AvailabilitySlot[];
     sessions: Session[];
 };
+
+const weekdays = [
+    { value: 'Monday', label: 'Monday' },
+    { value: 'Tuesday', label: 'Tuesday' },
+    { value: 'Wednesday', label: 'Wednesday' },
+    { value: 'Thursday', label: 'Thursday' },
+    { value: 'Friday', label: 'Friday' },
+    { value: 'Saturday', label: 'Saturday' },
+    { value: 'Sunday', label: 'Sunday' },
+];
 
 const TutorSchedule: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -60,11 +77,7 @@ const TutorSchedule: React.FC = () => {
             setScheduleData(response.data);
         } catch (error) {
             console.error('Failed to fetch schedule data:', error);
-            toast({
-                title: 'Error',
-                description: 'Failed to load schedule data.',
-                variant: 'destructive',
-            });
+            toast.error('Failed to load schedule data.');
         } finally {
             setLoading(false);
         }
@@ -85,19 +98,11 @@ const TutorSchedule: React.FC = () => {
 
         try {
             await Api.put(`/admin/sessions/${sessionId}/cancel`, { reason });
-            toast({
-                title: 'Success',
-                description: 'Session cancelled successfully.',
-                variant: 'default',
-            });
+            toast.success('Session cancelled successfully.');
             fetchScheduleData();
         } catch (error) {
             console.error('Failed to cancel session:', error);
-            toast({
-                title: 'Error',
-                description: 'Failed to cancel session.',
-                variant: 'destructive',
-            });
+            toast.error('Failed to cancel session.');
         }
     };
 
@@ -111,11 +116,7 @@ const TutorSchedule: React.FC = () => {
 
         try {
             await Api.post(`/admin/tutors/${id}/sessions`, newSession);
-            toast({
-                title: 'Success',
-                description: 'Session added successfully.',
-                variant: 'default',
-            });
+            toast.success('Session added successfully.');
             setShowAddSessionForm(false);
             setNewSession({
                 studentId: '',
@@ -126,12 +127,15 @@ const TutorSchedule: React.FC = () => {
             fetchScheduleData();
         } catch (error) {
             console.error('Failed to add session:', error);
-            toast({
-                title: 'Error',
-                description: 'Failed to add session.',
-                variant: 'destructive',
-            });
+            toast.error('Failed to add session.');
         }
+    };
+
+    const formatTime = (time: string) => {
+        const [hours, minutes] = time.split(':').map(Number);
+        const date = new Date();
+        date.setHours(hours, minutes, 0);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
     if (loading) {
@@ -309,24 +313,38 @@ const TutorSchedule: React.FC = () => {
                 {scheduleData.availability.length === 0 ? (
                     <p className="text-gray-500 text-center py-6">No availability set.</p>
                 ) : (
-                    <div className="grid grid-cols-7 gap-4">
-                        {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day, idx) => (
-                            <div key={day} className="border rounded-md p-3">
-                                <h3 className="text-sm font-medium text-gray-700 mb-2">{day}</h3>
-                                <div className="space-y-1">
-                                    {scheduleData.availability
-                                        .filter(slot => slot.day === idx)
-                                        .map((slot, slotIdx) => (
-                                            <div key={slotIdx} className="text-xs bg-blue-50 text-blue-700 p-1 rounded">
-                                                {slot.start} - {slot.end}
+                    <div className="grid grid-cols-1 gap-4">
+                        {weekdays.map(day => {
+                            const daySlots = scheduleData.availability.filter(slot => slot.day === day.value);
+
+                            return (
+                                <Card key={day.value} className={daySlots.length > 0 ? 'border-blue-200' : ''}>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-lg">{day.label}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {daySlots.length > 0 ? (
+                                            <div className="space-y-2">
+                                                {daySlots.map((slot, index) => (
+                                                    <div key={index} className="flex items-center justify-between p-2 bg-blue-50 rounded-md">
+                                                        <div className="flex items-center">
+                                                            <i className="far fa-clock text-blue-600 mr-2"></i>
+                                                            <span>
+                                                                {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
-                                        ))}
-                                    {!scheduleData.availability.some(slot => slot.day === idx) && (
-                                        <p className="text-xs text-gray-500">Not available</p>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
+                                        ) : (
+                                            <div className="text-center py-4 text-gray-500">
+                                                Not available
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
                     </div>
                 )}
             </div>

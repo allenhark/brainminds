@@ -61,7 +61,7 @@ const StudyLayout: React.FC = () => {
             >
                 <div className="p-4 border-b flex justify-between items-center">
                     <div className={`flex items-center gap-2 ${isCollapsed ? 'hidden' : 'block'}`}>
-                        <img src="/smalllogo.png" alt="BrainMinds" className="h-12" />
+                        <img src="/smalllogo.png" alt="学习English" className="h-12" />
                     </div>
                     <button
                         onClick={() => setIsCollapsed(!isCollapsed)}
@@ -83,8 +83,8 @@ const StudyLayout: React.FC = () => {
                                 <Link
                                     to={item.path}
                                     className={`flex items-center px-4 py-3 rounded-xl transition-colors ${location.pathname === item.path
-                                            ? 'bg-red-50 text-red-500'
-                                            : 'text-gray-700 hover:bg-gray-50'
+                                        ? 'bg-red-50 text-red-500'
+                                        : 'text-gray-700 hover:bg-gray-50'
                                         } ${isCollapsed ? 'justify-center' : 'gap-3'}`}
                                 >
                                     <i className={`${item.icon} ${isCollapsed ? 'text-xl' : ''}`}></i>

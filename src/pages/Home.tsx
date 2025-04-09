@@ -1,56 +1,125 @@
-import { Button } from "~/ui/button";
-import { Card } from "~/ui/card";
-import { Input } from "~/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
+import HelmetComponent from "../components/HelmetComponent";
+import Api from "@/Api";
+import { useEffect, useState } from "react";
+import { url } from "@/config";
+
+interface TutorProfile {
+    id: number;
+    userId: number;
+    educationLevel: string;
+    teachingCredentials: string;
+    teachingStyle: string;
+    teachingMaterials: string;
+    aboutMe: string;
+    availability: string;
+    timezone: string;
+    lessonDuration: number;
+    applicationStatus: string;
+}
+
+interface TutorStats {
+    id: number;
+    userId: number;
+    totalStudents: number;
+    totalSessions: number;
+    completedSessions: number;
+    cancelledSessions: number;
+    totalHoursTaught: number;
+    averageRating: number | null;
+    responseRate: number;
+}
+
+interface Tutor {
+    id: number;
+    firstName: string;
+    lastName: string;
+    avatar: string | null;
+    tutorProfile: TutorProfile;
+    tutorStats: TutorStats;
+}
 
 export default function Home() {
+    const [tutors, setTutors] = useState<Tutor[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        const fetchTutors = async () => {
+            try {
+                const { data } = await Api.get(`/site/featured-tutors`);
+                setTutors(data);
+            } catch (error) {
+                setError(error as any);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchTutors();
+    }, []);
+
+    // Helper function to generate avatar URL
+    const getAvatarUrl = (avatar: string | null) => {
+        if (!avatar) return "https://api.dicebear.com/7.x/micah/svg?size=200";
+        return avatar.startsWith('http') ? avatar : `${url}/${avatar}`;
+    };
+
     return (
         <div className="flex flex-col justify-center items-center">
+            <HelmetComponent
+                title="学习English - Learn English with Native Tutors"
+                description="Connect with native English tutors for personalized online lessons. Improve your speaking, listening, and grammar skills."
+            />
             {/* Hero Section */}
             <section className="bg-gradient-to-b from-red-50 via-red-50/50 to-white min-h-[600px] w-full -mt-[70px]">
-                <div className="container max-w-6xl mx-auto px-4 pb-16 relative pt-[100px]">
+                <div className="container max-w-6xl mx-auto px-4 pb-16 relative pt-[200px]">
                     <div className="max-w-xl relative z-10">
                         <h1 className="text-5xl md:text-6xl font-bold mb-8">
-                            找英语老师
-                            <span className="block mt-2">Find an English Tutor Near Me</span>
+                            <span className="block text-red-500">找英语老师</span>
+                            <span className="block mt-2 text-gray-700">Find an English Tutor</span>
                         </h1>
 
                         <div className="space-y-2 mb-8">
                             <div className="flex items-center gap-2">
                                 <span className="text-red-500">⏰</span>
-                                <span>随时随地学习英语 Quality English tutoring at your fingertips</span>
+                                <div>
+                                    <span className="block text-gray-800">随时随地学习英语</span>
+                                    <span className="block text-sm text-gray-600">Quality English tutoring at your fingertips</span>
+                                </div>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-red-500">💻</span>
-                                <span>超过10万英语老师 100,000+ English tutors available</span>
+                                <div>
+                                    <span className="block text-gray-800">超过10万英语老师</span>
+                                    <span className="block text-sm text-gray-600">100,000+ English tutors available</span>
+                                </div>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-red-500">✅</span>
-                                <span>实名认证 Verified reviews</span>
+                                <div>
+                                    <span className="block text-gray-800">实名认证</span>
+                                    <span className="block text-sm text-gray-600">Verified reviews</span>
+                                </div>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-red-500">🔒</span>
-                                <span>安全支付 Secure payment</span>
+                                <div>
+                                    <span className="block text-gray-800">安全支付</span>
+                                    <span className="block text-sm text-gray-600">Secure payment</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-full shadow-lg p-3 flex items-center relative z-20">
-                            <div className="flex-1 flex items-center gap-2 px-6">
-                                <span className="text-gray-400">🔍</span>
-                                <Input
-                                    placeholder="寻找英语老师 / Find English tutors"
-                                    className="border-0 focus:ring-0 text-lg leading-relaxed placeholder:text-gray-400 h-12"
-                                />
-                            </div>
-                            <Button className="bg-red-500 hover:bg-red-600 text-white rounded-full px-8 h-12 text-lg">
-                                搜索 Search
-                            </Button>
-                        </div>
+
                     </div>
 
                     {/* Tutor images */}
                     <div className="absolute right-0 top-0 bottom-0 hidden lg:flex items-center z-0">
-                        <div className="flex gap-4 h-[600px]">
+                        <div className="flex gap-4 h-[600px] mt-[120px]">
                             <div className="w-48 rounded-3xl overflow-hidden h-[450px]">
                                 <img src="/tutor1.jpeg" alt="" className="w-full h-full object-cover" />
                             </div>
@@ -66,112 +135,93 @@ export default function Home() {
             </section>
 
             {/* Tutor Listings */}
-            <section className="py-16 flex w-full justify-center items-center">
+            <section className="py-16 flex w-full justify-center items-center mt-10">
                 <div className="container max-w-6xl mx-auto px-4">
                     <div className="flex items-center gap-2 mb-8">
-                        <h2 className="text-2xl font-bold">专业英语老师 Professional English Tutors</h2>
+                        <h2 className="text-2xl font-bold">
+                            <span className="text-red-500">专业英语老师</span>
+                            <span className="ml-2 text-gray-700">Professional English Tutors</span>
+                        </h2>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-3 gap-10">
-                        {[
-                            {
-                                name: "Sarah",
-                                image: "https://images.unsplash.com/photo-1580894732444-8ecded7900cd",
-                                description: "TESOL certified with 5+ years experience teaching Business English and conversation skills to Chinese professionals",
-                                price: "¥200/h",
-                                rating: 5,
-                                reviews: 184,
-                                verified: true,
-                            },
-                            {
-                                name: "Michael",
-                                image: "https://images.unsplash.com/photo-1633332755192-727a05c4013d",
-                                description: "Native speaker specializing in IELTS and TOEFL preparation. Helped 100+ students achieve their target scores",
-                                price: "¥180/h",
-                                rating: 5,
-                                reviews: 167,
-                                verified: true,
-                            },
-                            {
-                                name: "Emma",
-                                image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
-                                description: "Experienced in teaching young learners. Making English fun and engaging for children through interactive lessons",
-                                price: "¥150/h",
-                                rating: 5,
-                                reviews: 203,
-                                verified: true,
-                            },
-                            {
-                                name: "David",
-                                image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e",
-                                description: "Business English specialist with corporate training experience. Focus on presentation and negotiation skills",
-                                price: "¥220/h",
-                                rating: 5,
-                                reviews: 156,
-                                verified: true,
-                            },
-                            {
-                                name: "Linda",
-                                image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80",
-                                description: "Pronunciation expert helping students overcome accent challenges and speak with confidence",
-                                price: "¥190/h",
-                                rating: 5,
-                                reviews: 178,
-                                verified: true,
-                            },
-                            {
-                                name: "James",
-                                image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
-                                description: "Former IELTS examiner with extensive experience in test preparation and academic English",
-                                price: "¥250/h",
-                                rating: 5,
-                                reviews: 192,
-                                verified: true,
-                            },
-                        ].map((tutor) => (
-                            <Link to={`/tutor/${tutor.name.toLowerCase()}`} key={tutor.name} className="overflow-hidden group bg-gray-50 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                                <div className="relative">
-                                    <img
-                                        src={tutor.image}
-                                        alt={tutor.name}
-                                        className="w-full aspect-square object-cover"
-                                    />
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="absolute top-2 right-2 z-10 text-white hover:text-primary bg-black/20 rounded-full"
-                                    >
-                                        <i className="fas fa-heart text-sm"></i>
-                                    </Button>
+                        {loading ? (
+                            // Loading state
+                            Array(3).fill(0).map((_, index) => (
+                                <div key={index} className="bg-gray-50 rounded-2xl shadow-sm animate-pulse">
+                                    <div className="w-full aspect-square bg-gray-200"></div>
+                                    <div className="p-4">
+                                        <div className="h-6 bg-gray-200 rounded w-1/3 mb-2"></div>
+                                        <div className="h-4 bg-gray-200 rounded w-1/4 mb-3"></div>
+                                        <div className="h-16 bg-gray-200 rounded mb-3"></div>
+                                        <div className="h-10 bg-gray-200 rounded"></div>
+                                    </div>
                                 </div>
-                                <div className="p-4">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <h3 className="font-semibold text-lg">{tutor.name}</h3>
-                                        <span className="text-violet-600 px-2 py-1 text-xs bg-violet-50 rounded-full">Ambassador</span>
-                                    </div>
-                                    <div className="flex items-center gap-1 mb-2">
-                                        <div className="flex items-center text-yellow-400">
-                                            <i className="fas fa-star"></i>
-                                            <span className="ml-1 text-gray-700 text-sm">{tutor.rating}</span>
-                                        </div>
-                                        <span className="text-gray-500 text-sm">({tutor.reviews} reviews)</span>
-                                    </div>
-                                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                                        {tutor.description}
-                                    </p>
-                                    <div className="flex items-center justify-between pt-2 border-t">
-
-                                        <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white w-full">
-                                            预约 Book Now
+                            ))
+                        ) : tutors.length > 0 ? (
+                            // Map real tutors from API
+                            tutors.map((tutor) => (
+                                <Link to={`/tutor/${tutor.id}`} key={tutor.id} className="overflow-hidden group bg-gray-50 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="relative">
+                                        <img
+                                            src={getAvatarUrl(tutor.avatar)}
+                                            alt={`${tutor.firstName} ${tutor.lastName}`}
+                                            className="w-full aspect-square object-cover"
+                                        />
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="absolute top-2 right-2 z-10 text-white hover:text-primary bg-black/20 rounded-full"
+                                        >
+                                            <i className="fas fa-heart text-sm"></i>
                                         </Button>
                                     </div>
+                                    <div className="p-4">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <h3 className="font-semibold text-lg">{tutor.firstName} {tutor.lastName}</h3>
+                                            {tutor.tutorProfile.applicationStatus === "APPROVED" && (
+                                                <span className="text-violet-600 px-2 py-1 text-xs bg-violet-50 rounded-full">Verified  实名认证</span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-1 mb-2">
+                                            <div className="flex items-center text-yellow-400">
+                                                <i className="fas fa-star"></i>
+                                                <span className="ml-1 text-gray-700 text-sm">
+                                                    {tutor.tutorStats.averageRating || "New"}
+                                                </span>
+                                            </div>
+                                            <span className="text-gray-500 text-sm">
+                                                ({tutor.tutorStats.completedSessions} sessions)
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                                            {tutor.tutorProfile.aboutMe || `${tutor.tutorProfile.teachingStyle} - ${tutor.tutorProfile.educationLevel}`}
+                                        </p>
+                                        <div className="flex items-center justify-between pt-2 border-t">
+                                            <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white w-full">
+                                                预约 Book Now
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))
+                        ) : (
+                            // No tutors available
+                            <div className="col-span-3 py-12 text-center">
+                                <div className="mb-4 text-gray-400">
+                                    <i className="fas fa-user-slash text-4xl"></i>
                                 </div>
-                            </Link>
-                        ))}
+                                <h3 className="text-lg font-semibold mb-2">No tutors available / 没有老师</h3>
+                                <p className="text-gray-600 max-w-md mx-auto">
+                                    We couldn't find any tutors at the moment. Please check back later or adjust your search criteria. <br />
+                                    目前没有老师，请稍后再试或调整您的搜索条件。
+                                </p>
+                            </div>
+                        )}
                     </div>
                     <div className="text-center mt-8">
                         <Button variant="outline" className="rounded-full">
-                            Show more tutors
+                            查看更多老师/ Show more tutors
                         </Button>
                     </div>
                 </div>
@@ -181,7 +231,7 @@ export default function Home() {
             <section className="py-16 w-full">
                 <div className="container max-w-6xl mx-auto px-4">
                     <h2 className="text-3xl font-bold mb-12">
-                        学习英语很简单
+                        <span className="block text-red-500">学习英语很简单</span>
                         <span className="block text-xl mt-2 text-gray-600">Finding English tutoring is simple</span>
                     </h2>
 
@@ -193,8 +243,11 @@ export default function Home() {
                                     <i className="fas fa-search text-2xl text-white"></i>
                                 </div>
                             </div>
-                            <h3 className="text-xl font-bold mb-3">1. 浏览英语老师档案<br />Browse English tutor profiles</h3>
-                            <p className="text-gray-600">根据您的需求选择理想的英语老师（价格、资质、评价、在线或线下课程）</p>
+                            <h3 className="text-xl font-bold mb-3">
+                                <span className="block text-red-500">1. 浏览英语老师档案</span>
+                                <span className="block text-gray-700 text-lg">Browse English tutor profiles</span>
+                            </h3>
+                            <p className="text-gray-800">根据您的需求选择理想的英语老师（价格、资质、评价、在线或线下课程）</p>
                             <p className="text-sm text-gray-500 mt-1">Find your ideal English tutor based on your needs (prices, qualifications, reviews, online or in-person lessons)</p>
                         </div>
 
@@ -210,8 +263,11 @@ export default function Home() {
                                     </div>
                                 </div>
                             </div>
-                            <h3 className="text-xl font-bold mb-3">2. 安排英语课程<br />Arrange your English lessons</h3>
-                            <p className="text-gray-600">与老师沟通学习需求和时间安排。在收件箱中安全地安排和支付课程。</p>
+                            <h3 className="text-xl font-bold mb-3">
+                                <span className="block text-red-500">2. 安排英语课程</span>
+                                <span className="block text-gray-700 text-lg">Arrange your English lessons</span>
+                            </h3>
+                            <p className="text-gray-800">与老师沟通学习需求和时间安排。在收件箱中安全地安排和支付课程。</p>
                             <p className="text-sm text-gray-500 mt-1">Discuss your needs and schedule with your tutor. Schedule and pay for lessons securely from your inbox.</p>
                         </div>
 
@@ -222,8 +278,11 @@ export default function Home() {
                                     <div className="text-3xl">😊</div>
                                 </div>
                             </div>
-                            <h3 className="text-xl font-bold mb-3">3. 开启学习之旅<br />Discover new experiences</h3>
-                            <p className="text-gray-600">学生会员卡让您可以接触到所有老师、教练和大师课程。与优秀的老师一起发现新的学习激情。</p>
+                            <h3 className="text-xl font-bold mb-3">
+                                <span className="block text-red-500">3. 开启学习之旅</span>
+                                <span className="block text-gray-700 text-lg">Discover new experiences</span>
+                            </h3>
+                            <p className="text-gray-800">学生会员卡让您可以接触到所有老师、教练和大师课程。与优秀的老师一起发现新的学习激情。</p>
                             <p className="text-sm text-gray-500 mt-1">The Student Pass gives you unlimited access to all tutors, coaches, and masterclasses. Discover new passions with great teachers.</p>
                         </div>
                     </div>
@@ -234,29 +293,45 @@ export default function Home() {
             <section className="py-16 flex w-full justify-center items-center bg-gray-50">
                 <div className="container max-w-6xl mx-auto px-4">
                     <h2 className="text-3xl font-bold mb-8 text-center">
-                        常见问题
+                        <span className="block text-red-500">常见问题</span>
                         <span className="block text-xl mt-2 text-gray-600">Frequently Asked Questions</span>
                     </h2>
 
                     <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
                         <div className="bg-white p-6 rounded-2xl shadow-sm">
-                            <h3 className="font-semibold text-lg mb-3">如何选择合适的英语老师？<br />How do I choose the right tutor?</h3>
-                            <p className="text-gray-600">查看老师评价，检查资质认证，并与老师沟通学习目标。<br />Read reviews, check qualifications, and message tutors to discuss your learning goals.</p>
+                            <h3 className="font-semibold text-lg mb-3">
+                                <span className="block text-red-500">如何选择合适的英语老师？</span>
+                                <span className="block text-gray-700">How do I choose the right tutor?</span>
+                            </h3>
+                            <p className="text-gray-800">查看老师评价，检查资质认证，并与老师沟通学习目标。</p>
+                            <p className="text-sm text-gray-600">Read reviews, check qualifications, and message tutors to discuss your learning goals.</p>
                         </div>
 
                         <div className="bg-white p-6 rounded-2xl shadow-sm">
-                            <h3 className="font-semibold text-lg mb-3">第一节课是怎样的？<br />What happens in the first lesson?</h3>
-                            <p className="text-gray-600">老师会评估您的英语水平，了解您的需求，制定个性化的学习计划。<br />Your tutor will assess your level, understand your needs, and create a personalized learning plan.</p>
+                            <h3 className="font-semibold text-lg mb-3">
+                                <span className="block text-red-500">第一节课是怎样的？</span>
+                                <span className="block text-gray-700">What happens in the first lesson?</span>
+                            </h3>
+                            <p className="text-gray-800">老师会评估您的英语水平，了解您的需求，制定个性化的学习计划。</p>
+                            <p className="text-sm text-gray-600">Your tutor will assess your level, understand your needs, and create a personalized learning plan.</p>
                         </div>
 
                         <div className="bg-white p-6 rounded-2xl shadow-sm">
-                            <h3 className="font-semibold text-lg mb-3">如何支付课程费用？<br />How do I pay for lessons?</h3>
-                            <p className="text-gray-600">通过我们的安全支付系统，可以使用信用卡或支付宝进行支付。<br />Use our secure payment system with credit card or Alipay options.</p>
+                            <h3 className="font-semibold text-lg mb-3">
+                                <span className="block text-red-500">如何支付课程费用？</span>
+                                <span className="block text-gray-700">How do I pay for lessons?</span>
+                            </h3>
+                            <p className="text-gray-800">通过我们的安全支付系统，可以使用信用卡或支付宝进行支付。</p>
+                            <p className="text-sm text-gray-600">Use our secure payment system with credit card or Alipay options.</p>
                         </div>
 
                         <div className="bg-white p-6 rounded-2xl shadow-sm">
-                            <h3 className="font-semibold text-lg mb-3">可以随时取消课程吗？<br />Can I cancel lessons?</h3>
-                            <p className="text-gray-600">是的，提前24小时取消课程可获得全额退款。<br />Yes, cancel 24 hours in advance for a full refund.</p>
+                            <h3 className="font-semibold text-lg mb-3">
+                                <span className="block text-red-500">可以随时取消课程吗？</span>
+                                <span className="block text-gray-700">Can I cancel lessons?</span>
+                            </h3>
+                            <p className="text-gray-800">是的，提前24小时取消课程可获得全额退款。</p>
+                            <p className="text-sm text-gray-600">Yes, cancel 24 hours in advance for a full refund.</p>
                         </div>
                     </div>
                 </div>
@@ -265,7 +340,10 @@ export default function Home() {
             {/* Statistics Section */}
             <section className="py-16 bg-blue-50 flex w-full justify-center items-center">
                 <div className="container max-w-6xl mx-auto px-4">
-                    <h2 className="text-2xl font-bold mb-8">英语学习成就 Learning Achievements</h2>
+                    <h2 className="text-2xl font-bold mb-8">
+                        <span className="text-red-500">英语学习成就</span>
+                        <span className="ml-2 text-gray-700">Learning Achievements</span>
+                    </h2>
                     <div className="grid md:grid-cols-3 gap-8">
                         <div>
                             <p className="text-4xl font-bold text-blue-600 mb-2">95%</p>

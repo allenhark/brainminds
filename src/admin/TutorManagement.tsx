@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '@/components/ui/loading-spinner';
-const url = 'http://localhost:3000/'
+import { url } from '@/config';
 
 type Tutor = {
     id: number;

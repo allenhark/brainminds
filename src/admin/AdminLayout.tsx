@@ -91,7 +91,7 @@ const AdminLayout: React.FC = () => {
                     <div className="flex items-center justify-between h-16 px-4 border-b">
                         {!collapsed && (
                             <Link to="/admin/dashboard" className="flex items-center">
-                                <img src="/smalllogo.png" alt="BrainMinds" className="h-14" />
+                                <img src="/smalllogo.png" alt="学习English" className="h-14" />
                             </Link>
                         )}
                         <Button

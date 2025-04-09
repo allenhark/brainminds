@@ -267,7 +267,7 @@ const TutorDashboard: React.FC = () => {
                     <span className="block text-base text-gray-500">Welcome Back!</span>
                 </h1>
                 <Button
-                    onClick={() => navigate('/tutor/profile')}
+                    onClick={() => navigate('/my-tutor/profile')}
                     variant="outline"
                     className="flex items-center gap-2"
                 >
@@ -465,7 +465,7 @@ const TutorDashboard: React.FC = () => {
                 <CardFooter>
                     <Button
                         variant="outline"
-                        onClick={() => navigate('/tutor/sessions')}
+                        onClick={() => navigate('/my-tutor/sessions')}
                         className="w-full"
                     >
                         查看所有课程
@@ -534,14 +534,14 @@ const TutorDashboard: React.FC = () => {
                     )}
                 </CardContent>
                 <CardFooter>
-                    <Button
+                    {/* <Button
                         variant="outline"
                         onClick={() => navigate('/tutor/messages')}
                         className="w-full"
                     >
                         查看所有消息
                         <span className="ml-2 text-sm text-gray-500">View All Messages</span>
-                    </Button>
+                    </Button> */}
                 </CardFooter>
             </Card>
         </div>

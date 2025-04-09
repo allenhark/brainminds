@@ -36,8 +36,37 @@ export default function Header() {
     logout();
   };
 
+  // Get the role-specific dashboard path
+  const getDashboardPath = () => {
+    if (!user) return '/';
+
+    switch (user.role) {
+      case 'STUDENT':
+        return '/study/dashboard';
+      case 'TUTOR':
+        return '/my-tutor/dashboard';
+      case 'ADMIN':
+        return '/admin';
+      default:
+        return '/';
+    }
+  };
+
   const renderUserMenu = () => {
     if (!user) return null;
+
+    // Profile and settings paths based on user role
+    const profilePath = user.role === 'TUTOR'
+      ? '/my-tutor/profile'
+      : user.role === 'STUDENT'
+        ? '/study/settings'
+        : '/admin';
+
+    const settingsPath = user.role === 'TUTOR'
+      ? '/my-tutor/profile'
+      : user.role === 'STUDENT'
+        ? '/study/settings'
+        : '/admin';
 
     return (
       <DropdownMenu>
@@ -45,7 +74,7 @@ export default function Header() {
           <Button variant="ghost" className="flex items-center justify-center gap-2">
             <span className="text-sm font-medium">{user.firstName}</span>
             <img
-              src={`https://api.dicebear.com/7.x/micah/svg?size=72&seed=${user.email}`}
+              src={`https://api.dicebear.com/7.x/avataaars/svg?size=72&seed=${user.email}`}
               alt={user.firstName}
               className="bg-gray-50 h-10 rounded-full"
             />
@@ -53,13 +82,13 @@ export default function Header() {
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" forceMount>
           <DropdownMenuItem asChild>
-            <Link to="/dashboard/profile" className="flex items-center">
+            <Link to={profilePath} className="flex items-center">
               <i className="far fa-user mr-2 h-4 w-4" />
               <span>Profile</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link to="/dashboard/settings" className="flex items-center">
+            <Link to={settingsPath} className="flex items-center">
               <i className="far fa-cog mr-2 h-4 w-4" />
               <span>Settings</span>
             </Link>
@@ -77,78 +106,14 @@ export default function Header() {
   const renderRoleSpecificLinks = () => {
     if (!user) return null;
 
-    switch (user.role) {
-      case 'STUDENT':
-        return (
-          <>
-            <Link to="/dashboard/lessons" className="text-gray-600 flex items-center">
-              <i className="far fa-book-open mr-2 h-4 w-4" />
-              My Lessons
-            </Link>
-            <Link to="/dashboard/students" className="text-gray-600 flex items-center">
-              <i className="far fa-users mr-2 h-4 w-4" />
-              My Students
-            </Link>
-            <Link to="/dashboard/schedule" className="text-gray-600 flex items-center">
-              <i className="far fa-calendar mr-2 h-4 w-4" />
-              Schedule
-            </Link>
-            <Link to="/dashboard/messages" className="text-gray-600 flex items-center">
-              <i className="far fa-envelope mr-2 h-4 w-4" />
-              Messages
-            </Link>
-          </>
-        );
-      case 'TUTOR':
-        return (
-          <>
-            <Link to="/dashboard/students" className="text-gray-600 flex items-center">
-              <i className="far fa-users mr-2 h-4 w-4" />
-              My Students
-            </Link>
-            <Link to="/dashboard/schedule" className="text-gray-600 flex items-center">
-              <i className="far fa-calendar mr-2 h-4 w-4" />
-              Schedule
-            </Link>
-            <Link to="/dashboard/messages" className="text-gray-600 flex items-center">
-              <i className="far fa-envelope mr-2 h-4 w-4" />
-              Messages
-            </Link>
-          </>
-        );
-      case 'ADMIN':
-        return (
-          <>
-            <Link to="/dashboard/admin/dashboard" className="text-gray-600">
-              <i className="far fa-tachometer-alt mr-2 h-4 w-4" />
-              Dashboard
-            </Link>
-            <Link to="/dashboard/admin/users" className="text-gray-600">
-              <i className="far fa-users mr-2 h-4 w-4" />
-              Staff
-            </Link>
-            <Link to="/dashboard/admin/tutors" className="text-gray-600">
-              <i className="far fa-user-tie mr-2 h-4 w-4" />
-              Tutors
-            </Link>
-            <Link to="/dashboard/admin/students" className="text-gray-600">
-              <i className="far fa-user-graduate mr-2 h-4 w-4" />
-              Students
-            </Link>
-            <Link to="/dashboard/admin/messages" className="text-gray-600">
-              <i className="far fa-envelope mr-2 h-4 w-4" />
-              Messages
-            </Link>
+    const dashboardPath = getDashboardPath();
 
-            <Link to="/dashboard/admin/payments" className="text-gray-600">
-              <i className="far fa-credit-card mr-2 h-4 w-4" />
-              Payments
-            </Link>
-          </>
-        );
-      default:
-        return null;
-    }
+    return (
+      <Link to={dashboardPath} className="text-gray-600 flex items-center">
+        <i className="far fa-tachometer-alt mr-2 h-4 w-4" />
+        Dashboard
+      </Link>
+    );
   };
 
   return (
@@ -156,7 +121,7 @@ export default function Header() {
       }`}>
       <div className="container max-w-6xl mx-auto px-4 flex h-16 items-center justify-between">
         <Link to="/" className="font-semibold text-xl text-red-500">
-          <img src="/smalllogo.png" alt="BrainMinds" className="h-14" />
+          <img src="/smalllogo.png" alt="学习English" className="h-14" />
         </Link>
 
         {/* Mobile Menu Button */}
@@ -221,21 +186,32 @@ export default function Header() {
                 </>
               ) : (
                 <>
-                  {renderRoleSpecificLinks()}
                   <Link
-                    to="/profile"
-                    className="text-gray-600 px-4 py-2 hover:bg-gray-50 rounded-md"
+                    to={getDashboardPath()}
+                    className="text-gray-600 px-4 py-2 hover:bg-gray-50 rounded-md flex items-center"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    Profile
+                    <i className="far fa-tachometer-alt mr-2 h-4 w-4" />
+                    Dashboard
                   </Link>
-                  <Link
-                    to="/settings"
-                    className="text-gray-600 px-4 py-2 hover:bg-gray-50 rounded-md"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Settings
-                  </Link>
+                  {user.role === 'TUTOR' && (
+                    <Link
+                      to="/my-tutor/profile"
+                      className="text-gray-600 px-4 py-2 hover:bg-gray-50 rounded-md"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Profile
+                    </Link>
+                  )}
+                  {user.role === 'STUDENT' && (
+                    <Link
+                      to="/study/settings"
+                      className="text-gray-600 px-4 py-2 hover:bg-gray-50 rounded-md"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Settings
+                    </Link>
+                  )}
                   <button
                     onClick={() => {
                       handleLogout();

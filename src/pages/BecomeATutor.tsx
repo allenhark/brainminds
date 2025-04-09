@@ -78,7 +78,7 @@ export default function BecomeATutor() {
 
     const checkApplicationStatus = async (id: number) => {
         try {
-            const response = await Api.get(`/tutor/status/${id}`);
+            const response = await Api.get(`/site/status/${id}`);
             setApplicationStatus(response.data);
             setUserId(id);
 
@@ -110,7 +110,7 @@ export default function BecomeATutor() {
         e.preventDefault();
         setIsLoading(true);
         try {
-            const response = await Api.post("/tutor/recover", { email: recoveryEmail });
+            const response = await Api.post("/site/recover", { email: recoveryEmail });
             setUserId(response.data.userId);
             localStorage.setItem('tutorApplicationUserId', response.data.userId.toString());
             setShowRecoveryModal(false);
@@ -163,7 +163,7 @@ export default function BecomeATutor() {
         setIsLoading(true);
         try {
             if (currentStep === 'personal-info') {
-                const response = await Api.post("/tutor/apply", {
+                const response = await Api.post("/site/apply", {
                     firstName: formData.firstName,
                     lastName: formData.lastName,
                     email: formData.email,
@@ -184,7 +184,7 @@ export default function BecomeATutor() {
                     toast.success("Personal information saved successfully! Please continue with your education details.");
                 }
             } else if (currentStep === 'education') {
-                await Api.put(`/tutor/${userId}/education`, {
+                await Api.put(`/site/${userId}/education`, {
                     educationLevel: formData.educationLevel,
                     teachingStyle: formData.teachingStyle,
                     teachingMaterials: formData.teachingMaterials,
@@ -193,7 +193,7 @@ export default function BecomeATutor() {
                 setCurrentStep('schedule');
                 toast.success("Education information saved successfully! Please set your teaching schedule.");
             } else if (currentStep === 'schedule') {
-                await Api.put(`/tutor/${userId}/schedule`, {
+                await Api.put(`/site/${userId}/schedule`, {
                     timezone: formData.timezone,
                     lessonDuration: formData.lessonDuration,
                     schedule: JSON.stringify(formData.schedule)
@@ -203,7 +203,7 @@ export default function BecomeATutor() {
             } else if (currentStep === 'avatar' && avatar) {
                 const formData = new FormData();
                 formData.append('avatar', avatar);
-                await Api.post(`/tutor/${userId}/avatar`, formData, {
+                await Api.post(`/site/${userId}/avatar`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
                 setCurrentStep('documents');
@@ -213,7 +213,7 @@ export default function BecomeATutor() {
                 documents.forEach(doc => {
                     formData.append('documents', doc);
                 });
-                await Api.post(`/tutor/${userId}/documents`, formData, {
+                await Api.post(`/site/${userId}/documents`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
                 setCurrentStep('verification');
@@ -245,11 +245,11 @@ export default function BecomeATutor() {
         if (!userId || !otpCode) return;
         setIsLoading(true);
         try {
-            await Api.post("/tutor/verify-email", { userId, otpCode });
+            await Api.post("/site/verify-email", { userId, otpCode });
             toast.success("Email verified successfully!");
 
             // After verification, check application status to determine next step
-            const statusResponse = await Api.get(`/tutor/status/${userId}`);
+            const statusResponse = await Api.get(`/site/status/${userId}`);
             const status = statusResponse.data;
 
             // Show completion message
@@ -267,7 +267,7 @@ export default function BecomeATutor() {
         if (!userId) return;
         setIsLoading(true);
         try {
-            await Api.post("/tutor/resend-otp", { userId });
+            await Api.post("/site/resend-otp", { userId });
             toast.success("Verification code resent. Please check your inbox.");
         } catch (error) {
             console.error("Error resending OTP:", error);

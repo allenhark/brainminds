@@ -86,7 +86,7 @@ const TutorLayout: React.FC = () => {
                     <div className="flex items-center justify-between h-16 px-4 border-b">
                         {!collapsed && (
                             <Link to="/my-tutor" className="flex items-center">
-                                <img src="/smalllogo.png" alt="BrainMinds" className="h-14" />
+                                <img src="/smalllogo.png" alt="学习English" className="h-14" />
                             </Link>
                         )}
                         <Button
@@ -175,14 +175,14 @@ const TutorLayout: React.FC = () => {
                             <h2 className="text-xl font-semibold text-gray-800">{pageTitle}</h2>
                         </div>
                         <div className="flex items-center space-x-4">
-                            <Button variant="ghost" size="icon" className="relative">
+                            <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/my-tutor/notifications')}>
                                 <i className="far fa-bell h-5 w-5"></i>
                                 <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500"></span>
                             </Button>
-                            <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/tutor/messages')}>
+                            {/* <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/tutor/messages')}>
                                 <i className="far fa-envelope h-5 w-5"></i>
                                 <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500"></span>
-                            </Button>
+                            </Button> */}
                             <Button variant="ghost" onClick={handleLogout}>
                                 Logout
                             </Button>
