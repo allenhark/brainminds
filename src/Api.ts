@@ -80,6 +80,20 @@ export const userApi = {
             console.error('Failed to update user profile:', error);
             throw error;
         }
+    },
+
+    updatePassword: async (passwordData: {
+        currentPassword: string;
+        newPassword: string;
+        confirmPassword: string;
+    }) => {
+        try {
+            const response = await Api.put('/student/password', passwordData);
+            return response.data;
+        } catch (error) {
+            console.error('Failed to update password:', error);
+            throw error;
+        }
     }
 };
 

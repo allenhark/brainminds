@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { format, parseISO, addDays, isBefore, isAfter, startOfWeek, addWeeks, startOfDay } from 'date-fns';
+import { format, parseISO, addDays, isBefore, isAfter, startOfWeek, addWeeks, startOfDay, addMinutes, differenceInDays } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Api from '@/Api';
 import toast from 'react-hot-toast';
-import wsService from '@/services/wsService';
 import { url } from '@/config';
 import { Link } from 'react-router-dom';
 import HelmetComponent from '@/components/HelmetComponent';
@@ -54,23 +53,6 @@ interface SubscriptionStatus {
     expiryDate?: string;
 }
 
-interface Message {
-    id: number;
-    content: string;
-    senderId: number;
-    type: string;
-    fileUrl?: string;
-    fileName?: string;
-    createdAt: string;
-    isRead: boolean;
-}
-
-interface ChatRoom {
-    id: number;
-    tutorId: number;
-    lastMessageAt: string;
-}
-
 interface Review {
     id: number;
     studentName: string;
@@ -94,25 +76,22 @@ const TutorView: React.FC = () => {
     const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
     const [currentView, setCurrentView] = useState<'calendar' | 'booking'>('calendar');
     const [selectedTab, setSelectedTab] = useState('profile');
-
-    // Chat state
-    const [chatRoom, setChatRoom] = useState<ChatRoom | null>(null);
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [newMessage, setNewMessage] = useState('');
-    const [isTyping, setIsTyping] = useState(false);
-    const [isTutorTyping, setIsTutorTyping] = useState(false);
-    const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
     const [currentUser, setCurrentUser] = useState<any>(null);
-    const [file, setFile] = useState<File | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // New state for booking
     const [selectedDays, setSelectedDays] = useState<string[]>([]);
     const [recurringDuration, setRecurringDuration] = useState<number>(4); // 4 weeks by default
+    const [sessionDuration, setSessionDuration] = useState<number>(60); // Default 60 minutes
     const [reviewText, setReviewText] = useState('');
     const [reviewRating, setReviewRating] = useState(5);
     const [reviews, setReviews] = useState<Review[]>([]);
+    const [bookedSlots, setBookedSlots] = useState<{ [key: string]: string[] }>({});
+    const [remainingSubscriptionDays, setRemainingSubscriptionDays] = useState<number>(0);
+
+    // Add loading states for buttons
+    const [isBookingLoading, setIsBookingLoading] = useState(false);
+    const [isReviewSubmitLoading, setIsReviewSubmitLoading] = useState(false);
+    const [isSubscribeNavigating, setIsSubscribeNavigating] = useState(false);
 
     // Fetch tutor data, subscription status, and reviews
     useEffect(() => {
@@ -120,10 +99,11 @@ const TutorView: React.FC = () => {
             try {
                 setLoading(true);
 
-                const [tutorResponse, subscriptionResponse, userResponse] = await Promise.all([
+                const [tutorResponse, subscriptionResponse, userResponse, bookedSessionsResponse] = await Promise.all([
                     Api.get(`/student/tutors/${id}`),
                     Api.get('/student/subscription'),
-                    Api.get('/auth/me')
+                    Api.get('/auth/me'),
+                    Api.get('/student/sessions')
                 ]);
 
                 // Parse availability if it's a string
@@ -138,12 +118,44 @@ const TutorView: React.FC = () => {
                 }
 
                 setTutor(tutorData);
-                setSubscriptionStatus(subscriptionResponse.data);
+
+                // Calculate remaining subscription days
+                const subscriptionData = subscriptionResponse.data;
+                setSubscriptionStatus(subscriptionData);
+
+                if (subscriptionData.isSubscribed && subscriptionData.expiryDate) {
+                    const expiryDate = new Date(subscriptionData.expiryDate);
+                    const today = new Date();
+                    const daysRemaining = differenceInDays(expiryDate, today);
+                    setRemainingSubscriptionDays(Math.max(0, daysRemaining));
+
+                    // Adjust recurring duration based on subscription
+                    const maxWeeks = Math.floor(daysRemaining / 7);
+                    setRecurringDuration(Math.min(4, maxWeeks > 0 ? maxWeeks : 1));
+                }
+
                 setCurrentUser(userResponse.data);
+
+                // Track booked time slots
+                const bookedSessions = bookedSessionsResponse.data?.data || [];
+                const bookedSlotsMap: { [key: string]: string[] } = {};
+
+                bookedSessions.forEach((session: any) => {
+                    const sessionDate = format(new Date(session.startTime), 'yyyy-MM-dd');
+                    const timeSlot = format(new Date(session.startTime), 'HH:mm');
+
+                    if (!bookedSlotsMap[sessionDate]) {
+                        bookedSlotsMap[sessionDate] = [];
+                    }
+
+                    bookedSlotsMap[sessionDate].push(timeSlot);
+                });
+
+                setBookedSlots(bookedSlotsMap);
 
                 // Generate time slots based on tutor availability
                 if (tutorData && tutorData.availability) {
-                    generateTimeSlots(tutorData.availability);
+                    generateTimeSlots(tutorData.availability, bookedSlotsMap);
                 }
 
                 // Fetch reviews
@@ -165,179 +177,10 @@ const TutorView: React.FC = () => {
         fetchData();
     }, [id]);
 
-    // Initialize chat if subscribed
-    useEffect(() => {
-        if (subscriptionStatus.isSubscribed && tutor && currentUser) {
-            initializeChat();
-        }
-    }, [subscriptionStatus.isSubscribed, tutor, currentUser]);
-
-    // Scroll to bottom of messages
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
-
-    // Set up WebSocket listeners for chat
-    useEffect(() => {
-        if (!subscriptionStatus.isSubscribed || !chatRoom || !currentUser) return;
-
-        // Connect to WebSocket
-        if (!wsService.isConnected()) {
-            wsService.connect(currentUser.id.toString(), 'STUDENT');
-        }
-
-        // Set up message listener
-        const messageHandler = wsService.on('receive_message', (data: any) => {
-            if (data.chatId === chatRoom.id) {
-                setMessages(prev => [...prev, data.message]);
-
-                // Mark message as read if from tutor
-                if (data.message.senderId !== currentUser.id) {
-                    markMessageAsRead(data.message.id);
-                }
-            }
-        });
-
-        // Set up typing indicator listener
-        const typingHandler = wsService.on('typing_indicator', (data: any) => {
-            if (data.chatId === chatRoom.id && data.userId !== currentUser.id) {
-                setIsTutorTyping(data.isTyping);
-            }
-        });
-
-        // Clean up listeners
-        return () => {
-            messageHandler();
-            typingHandler();
-        };
-    }, [subscriptionStatus.isSubscribed, chatRoom, currentUser]);
-
-    const initializeChat = async () => {
-        try {
-            // Check if chat room exists or create one
-            const response = await Api.get(`/student/chats?tutorId=${tutor?.id}`);
-
-            if (response.data && response.data.length > 0) {
-                setChatRoom(response.data[0]);
-
-                // Fetch messages for this chat room
-                const messagesResponse = await Api.get(`/student/chats/${response.data[0].id}/messages`);
-                setMessages(messagesResponse.data);
-            } else {
-                // Create new chat room
-                const newChatResponse = await Api.post('/student/chats', {
-                    tutorId: tutor?.id
-                });
-
-                setChatRoom(newChatResponse.data);
-                setMessages([]);
-            }
-        } catch (error) {
-            console.error('Failed to initialize chat:', error);
-            toast.error('初始化聊天失败 / Failed to initialize chat');
-        }
-    };
-
-    const markMessageAsRead = async (messageId: number) => {
-        if (!chatRoom) return;
-
-        try {
-            await Api.post(`/student/chats/${chatRoom.id}/messages/${messageId}/read`);
-        } catch (error) {
-            console.error('Failed to mark message as read:', error);
-        }
-    };
-
-    const handleSendMessage = async () => {
-        if ((!newMessage.trim() && !file) || !chatRoom || !currentUser) return;
-
-        try {
-            if (file) {
-                // Handle file upload
-                const formData = new FormData();
-                formData.append('file', file);
-
-                if (newMessage.trim()) {
-                    formData.append('content', newMessage.trim());
-                } else {
-                    formData.append('content', 'Sent a file');
-                }
-
-                formData.append('type', file.type.startsWith('image/') ? 'image' : 'file');
-
-                const response = await Api.post(`/student/chats/${chatRoom.id}/messages`, formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    }
-                });
-
-                // Check if response contains error
-                if (response.data && response.data.error) {
-                    throw new Error(response.data.error);
-                }
-
-                setFile(null);
-            } else {
-                // Send text message
-                const response = await Api.post(`/student/chats/${chatRoom.id}/messages`, {
-                    content: newMessage,
-                    type: 'text'
-                });
-
-                // Check if response contains error
-                if (response.data && response.data.error) {
-                    throw new Error(response.data.error);
-                }
-            }
-
-            setNewMessage('');
-
-            // Send via WebSocket for real-time update
-            wsService.sendMessage(
-                tutor?.id.toString() || '',
-                chatRoom.id,
-                newMessage
-            );
-
-        } catch (error) {
-            console.error('Failed to send message:', error);
-            toast.error('发送消息失败 / Failed to send message');
-        }
-    };
-
-    const handleTyping = () => {
-        if (!chatRoom) return;
-
-        if (!isTyping) {
-            setIsTyping(true);
-            wsService.sendTypingIndicator(tutor?.id.toString() || '', chatRoom.id, true);
-        }
-
-        // Clear existing timeout
-        if (typingTimeout) {
-            clearTimeout(typingTimeout);
-        }
-
-        // Set new timeout to stop typing indicator after 2 seconds
-        const timeout = setTimeout(() => {
-            setIsTyping(false);
-            wsService.sendTypingIndicator(tutor?.id.toString() || '', chatRoom.id, false);
-        }, 2000);
-
-        setTypingTimeout(timeout);
-    };
-
-    const handleFileUpload = () => {
-        fileInputRef.current?.click();
-    };
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            setFile(e.target.files[0]);
-        }
-    };
-
-    const generateTimeSlots = (availability: string | Array<{ day: string; startTime: string; endTime: string }>) => {
+    const generateTimeSlots = (
+        availability: string | Array<{ day: string; startTime: string; endTime: string }>,
+        bookedSlots: { [key: string]: string[] } = {}
+    ) => {
         // Convert string to array if needed
         const availArray = typeof availability === 'string'
             ? (JSON.parse(availability) as Array<{ day: string; startTime: string; endTime: string }>)
@@ -376,57 +219,53 @@ const TutorView: React.FC = () => {
                     slots.push(existingDaySlot);
                 }
 
-                // Generate 1-hour time slots for this availability entry
+                // Parse time strings
                 const [startHour, startMinute] = availSlot.startTime.split(':').map(Number);
                 const [endHour, endMinute] = availSlot.endTime.split(':').map(Number);
 
-                let currentHour = startHour;
-                let currentMinute = startMinute;
+                // Generate slots based on session duration (30, 45, or 60 min)
+                const startDate = new Date(date);
+                startDate.setHours(startHour, startMinute, 0, 0);
 
-                while (currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) {
-                    const nextHour = currentMinute + 60 >= 60 ? currentHour + 1 : currentHour;
-                    const nextMinute = (currentMinute + 60) % 60;
+                const endDate = new Date(date);
+                endDate.setHours(endHour, endMinute, 0, 0);
 
-                    if (nextHour > endHour || (nextHour === endHour && nextMinute > endMinute)) {
-                        break;
-                    }
+                // Format date for checking booked slots
+                const dateString = format(date, 'yyyy-MM-dd');
+                const bookedTimesForDay = bookedSlots[dateString] || [];
 
-                    existingDaySlot.slots.push({
-                        startTime: `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`,
-                        endTime: `${nextHour.toString().padStart(2, '0')}:${nextMinute.toString().padStart(2, '0')}`,
-                        available: true // Assuming available for now
+                // Generate slots based on possible durations
+                let currentTime = new Date(startDate);
+                while (isBefore(currentTime, endDate)) {
+                    const slotStartTime = format(currentTime, 'HH:mm');
+
+                    // Check if this slot is already booked
+                    const isBooked = bookedTimesForDay.includes(slotStartTime);
+
+                    // Generate each duration option (30, 45, 60 min)
+                    [30, 45, 60].forEach(minutes => {
+                        const slotEndTime = format(addMinutes(currentTime, minutes), 'HH:mm');
+                        const slotEndDate = addMinutes(currentTime, minutes);
+
+                        // Only add if end time is within availability
+                        if (!isAfter(slotEndDate, endDate)) {
+                            existingDaySlot!.slots.push({
+                                startTime: slotStartTime,
+                                endTime: slotEndTime,
+                                available: !isBooked
+                            });
+                        }
                     });
 
-                    currentHour = nextHour;
-                    currentMinute = nextMinute;
+                    // Move to next 30-minute increment
+                    currentTime = addMinutes(currentTime, 30);
                 }
             });
         }
 
         // Sort slots by date
         slots.sort((a, b) => a.date.getTime() - b.date.getTime());
-
         setTimeSlots(slots);
-    };
-
-    const handleDateSelect = (date: Date | undefined) => {
-        setSelectedDate(date);
-        setSelectedTimeSlot(null);
-        setCurrentView('booking');
-    };
-
-    const handleTimeSlotSelect = (time: string) => {
-        setSelectedTimeSlot(time);
-    };
-
-    const getAvailableTimeSlotsForDate = () => {
-        if (!selectedDate) return [];
-
-        const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-
-        return timeSlots
-            .filter(slot => format(slot.date, 'yyyy-MM-dd') === selectedDateStr)
-            .flatMap(slot => slot.slots);
     };
 
     const handleBookingSubmit = async () => {
@@ -435,13 +274,26 @@ const TutorView: React.FC = () => {
             return;
         }
 
+        if (!sessionDuration || ![30, 45, 60].includes(sessionDuration)) {
+            toast.error('请选择有效的课程时长 / Please select a valid session duration');
+            return;
+        }
+
+        // Check if booking exceeds subscription time
+        const weeksToBook = Math.min(recurringDuration, Math.floor(remainingSubscriptionDays / 7));
+        if (weeksToBook <= 0) {
+            toast.error('您的订阅即将过期 / Your subscription is about to expire');
+            return;
+        }
+
+        setIsBookingLoading(true);
         try {
             // Create recurring sessions for selected days for the specified duration
             const startOfBooking = startOfDay(new Date()); // Start from today
             const sessionsToBook = [];
 
             // Calculate the end date based on recurring duration (in weeks)
-            const endDate = addWeeks(startOfBooking, recurringDuration);
+            const endDate = addWeeks(startOfBooking, weeksToBook);
 
             // Generate all dates for the selected days within the recurring period
             for (let day of selectedDays) {
@@ -457,7 +309,6 @@ const TutorView: React.FC = () => {
 
                 // Format times for API
                 const [startHour, startMinute] = availabilityForDay.startTime.split(':').map(Number);
-                const [endHour, endMinute] = availabilityForDay.endTime.split(':').map(Number);
 
                 // Clone the start date to avoid mutating it
                 let currentDate = new Date(startOfBooking);
@@ -472,15 +323,22 @@ const TutorView: React.FC = () => {
                     const sessionStartTime = new Date(currentDate);
                     sessionStartTime.setHours(startHour, startMinute);
 
-                    const sessionEndTime = new Date(currentDate);
-                    sessionEndTime.setHours(endHour, endMinute);
+                    const sessionEndTime = new Date(sessionStartTime);
+                    sessionEndTime.setMinutes(sessionStartTime.getMinutes() + sessionDuration);
 
                     // Only add if start time is in the future
                     if (isAfter(sessionStartTime, new Date())) {
-                        sessionsToBook.push({
-                            startTime: sessionStartTime.toISOString(),
-                            endTime: sessionEndTime.toISOString()
-                        });
+                        // Check if this time slot is available (not booked)
+                        const dateString = format(sessionStartTime, 'yyyy-MM-dd');
+                        const timeString = format(sessionStartTime, 'HH:mm');
+                        const isBooked = (bookedSlots[dateString] || []).includes(timeString);
+
+                        if (!isBooked) {
+                            sessionsToBook.push({
+                                startTime: sessionStartTime.toISOString(),
+                                endTime: sessionEndTime.toISOString()
+                            });
+                        }
                     }
 
                     // Move to next week
@@ -493,10 +351,11 @@ const TutorView: React.FC = () => {
                 return;
             }
 
-            // Book all sessions
+            // Book all sessions using session routes
             for (const session of sessionsToBook) {
-                await Api.post('/student/sessions', {
+                await Api.post('/sessions', {
                     tutorId: tutor.id,
+                    studentId: currentUser.id,
                     startTime: session.startTime,
                     endTime: session.endTime,
                     notes: bookingNotes
@@ -514,6 +373,8 @@ const TutorView: React.FC = () => {
         } catch (error) {
             console.error('Booking failed:', error);
             toast.error('预约失败 / Booking failed');
+        } finally {
+            setIsBookingLoading(false);
         }
     };
 
@@ -528,6 +389,7 @@ const TutorView: React.FC = () => {
             return;
         }
 
+        setIsReviewSubmitLoading(true);
         try {
             await Api.post(`/student/tutors/${tutor.id}/reviews`, {
                 rating: reviewRating,
@@ -536,7 +398,7 @@ const TutorView: React.FC = () => {
 
             // Add the new review to the local state
             const newReview: Review = {
-                id: Date.now(), // Temporary ID until we refresh
+                id: Date.now(),
                 studentName: `${currentUser?.firstName} ${currentUser?.lastName}`,
                 studentAvatar: currentUser?.avatar,
                 rating: reviewRating,
@@ -552,6 +414,8 @@ const TutorView: React.FC = () => {
         } catch (error) {
             console.error('Failed to submit review:', error);
             toast.error('评价提交失败 / Failed to submit review');
+        } finally {
+            setIsReviewSubmitLoading(false);
         }
     };
 
@@ -645,8 +509,19 @@ const TutorView: React.FC = () => {
                                 {!subscriptionStatus.isSubscribed && (
                                     <div className="mt-4 w-full">
                                         <Link to="/study/payments">
-                                            <Button className="bg-red-500 hover:bg-red-600 text-white w-full rounded-full">
-                                                订阅 / Subscribe
+                                            <Button
+                                                className="bg-red-500 hover:bg-red-600 text-white w-full rounded-full"
+                                                disabled={isSubscribeNavigating}
+                                                onClick={() => setIsSubscribeNavigating(true)}
+                                            >
+                                                {isSubscribeNavigating ? (
+                                                    <span className="flex items-center">
+                                                        <i className="fas fa-spinner fa-spin mr-2"></i>
+                                                        处理中 / Processing...
+                                                    </span>
+                                                ) : (
+                                                    '订阅 / Subscribe'
+                                                )}
                                             </Button>
                                         </Link>
                                     </div>
@@ -721,6 +596,18 @@ const TutorView: React.FC = () => {
 
                                         {subscriptionStatus.isSubscribed ? (
                                             <div className="bg-gray-50 p-6 rounded-xl mb-6 space-y-6">
+                                                {remainingSubscriptionDays > 0 ? (
+                                                    <div className="bg-blue-50 p-3 rounded-xl text-blue-700 flex items-center mb-4">
+                                                        <i className="fas fa-info-circle mr-2"></i>
+                                                        <span>您的订阅还剩 {remainingSubscriptionDays} 天 / Your subscription expires in {remainingSubscriptionDays} days</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="bg-yellow-50 p-3 rounded-xl text-yellow-700 flex items-center mb-4">
+                                                        <i className="fas fa-exclamation-triangle mr-2"></i>
+                                                        <span>您的订阅即将到期 / Your subscription is about to expire</span>
+                                                    </div>
+                                                )}
+
                                                 <div>
                                                     <h4 className="font-medium mb-3 flex items-center text-red-500">
                                                         <i className="fas fa-calendar-day mr-2"></i>
@@ -743,6 +630,25 @@ const TutorView: React.FC = () => {
                                                 <div>
                                                     <h4 className="font-medium mb-3 flex items-center text-red-500">
                                                         <i className="fas fa-clock mr-2"></i>
+                                                        课程时长 / Session Duration
+                                                    </h4>
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        {[30, 45, 60].map((minutes) => (
+                                                            <Button
+                                                                key={minutes}
+                                                                variant={sessionDuration === minutes ? "default" : "outline"}
+                                                                onClick={() => setSessionDuration(minutes)}
+                                                                className={`rounded-full ${sessionDuration === minutes ? 'bg-red-500 hover:bg-red-600' : ''}`}
+                                                            >
+                                                                {minutes} 分钟 / min
+                                                            </Button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <h4 className="font-medium mb-3 flex items-center text-red-500">
+                                                        <i className="fas fa-clock mr-2"></i>
                                                         课程持续周数 / Duration in Weeks
                                                     </h4>
                                                     <div className="flex items-center gap-2">
@@ -756,12 +662,19 @@ const TutorView: React.FC = () => {
                                                         <span className="text-lg font-medium w-8 text-center">{recurringDuration}</span>
                                                         <Button
                                                             variant="outline"
-                                                            onClick={() => setRecurringDuration(Math.min(12, recurringDuration + 1))}
+                                                            onClick={() => setRecurringDuration(Math.min(4, Math.min(Math.floor(remainingSubscriptionDays / 7), recurringDuration + 1)))}
                                                             className="px-3 rounded-full"
                                                         >
                                                             <i className="fas fa-plus"></i>
                                                         </Button>
                                                         <span className="ml-2 text-gray-600">周 / weeks</span>
+
+                                                        {recurringDuration >= Math.floor(remainingSubscriptionDays / 7) && (
+                                                            <span className="text-yellow-600 text-sm ml-2">
+                                                                <i className="fas fa-exclamation-circle mr-1"></i>
+                                                                最大可预约周数 / Max weeks
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
 
@@ -787,7 +700,10 @@ const TutorView: React.FC = () => {
                                                                             <i className="fas fa-check-circle text-green-500 mr-2"></i>
                                                                             {selectedDay}
                                                                         </span>
-                                                                        <span>{availSlot.startTime} - {availSlot.endTime}</span>
+                                                                        <span>
+                                                                            {availSlot.startTime} - {availSlot.endTime}
+                                                                            <span className="ml-2 text-sm text-green-600">({sessionDuration} min)</span>
+                                                                        </span>
                                                                     </div>
                                                                 ) : (
                                                                     <div key={selectedDay} className="flex justify-between p-3 bg-white rounded-xl shadow-sm opacity-50">
@@ -820,8 +736,17 @@ const TutorView: React.FC = () => {
                                                 <Button
                                                     onClick={() => navigate('/study/payments')}
                                                     className="bg-red-500 hover:bg-red-600 text-white rounded-full px-8"
+                                                    disabled={isSubscribeNavigating}
+                                                    onClick={() => setIsSubscribeNavigating(true)}
                                                 >
-                                                    订阅 / Subscribe
+                                                    {isSubscribeNavigating ? (
+                                                        <span className="flex items-center">
+                                                            <i className="fas fa-spinner fa-spin mr-2"></i>
+                                                            处理中 / Processing...
+                                                        </span>
+                                                    ) : (
+                                                        '订阅 / Subscribe'
+                                                    )}
                                                 </Button>
                                             </div>
                                         )}
@@ -843,8 +768,16 @@ const TutorView: React.FC = () => {
                                                 <Button
                                                     onClick={handleBookingSubmit}
                                                     className="w-full bg-red-500 hover:bg-red-600 text-white rounded-full h-12"
+                                                    disabled={remainingSubscriptionDays <= 0 || isBookingLoading}
                                                 >
-                                                    确认预约 / Confirm Booking
+                                                    {isBookingLoading ? (
+                                                        <span className="flex items-center justify-center">
+                                                            <i className="fas fa-spinner fa-spin mr-2"></i>
+                                                            处理中 / Processing...
+                                                        </span>
+                                                    ) : (
+                                                        '确认预约 / Confirm Booking'
+                                                    )}
                                                 </Button>
                                             </div>
                                         )}
@@ -894,8 +827,16 @@ const TutorView: React.FC = () => {
                                                 <Button
                                                     onClick={handleSubmitReview}
                                                     className="bg-red-500 hover:bg-red-600 text-white rounded-full"
+                                                    disabled={isReviewSubmitLoading}
                                                 >
-                                                    提交评价 / Submit Review
+                                                    {isReviewSubmitLoading ? (
+                                                        <span className="flex items-center">
+                                                            <i className="fas fa-spinner fa-spin mr-2"></i>
+                                                            处理中 / Processing...
+                                                        </span>
+                                                    ) : (
+                                                        '提交评价 / Submit Review'
+                                                    )}
                                                 </Button>
                                             </div>
                                         )}
@@ -951,178 +892,6 @@ const TutorView: React.FC = () => {
                         </Tabs>
                     </div>
                 </div>
-
-                {/* Chat Container - only shown if subscribed */}
-                {subscriptionStatus.isSubscribed && (
-                    <div className="mt-8">
-                        <Card className="rounded-2xl shadow overflow-hidden border-0">
-                            <div className="bg-red-500 p-4">
-                                <h3 className="font-semibold text-white flex items-center">
-                                    <i className="fas fa-comment-dots mr-2"></i>
-                                    与老师沟通 / Chat with Tutor
-                                </h3>
-                            </div>
-
-                            <div className="h-80 flex flex-col">
-                                {/* Messages Container */}
-                                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-                                    {messages.length === 0 ? (
-                                        <div className="h-full flex items-center justify-center">
-                                            <div className="text-center p-6">
-                                                <div className="inline-flex justify-center items-center w-12 h-12 bg-blue-100 rounded-full mb-4">
-                                                    <i className="fas fa-comments text-blue-500"></i>
-                                                </div>
-                                                <p className="text-gray-500">开始与老师沟通 / Start chatting with the tutor</p>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        messages.map((message) => {
-                                            const isCurrentUser = message.senderId === currentUser?.id;
-                                            return (
-                                                <div
-                                                    key={message.id}
-                                                    className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
-                                                >
-                                                    {!isCurrentUser && (
-                                                        <div className="flex-shrink-0 mr-2">
-                                                            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                                                                <i className="fas fa-user text-gray-500"></i>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    <div
-                                                        className={`max-w-[80%] rounded-2xl p-3 ${isCurrentUser
-                                                            ? 'bg-red-500 text-white rounded-tr-none'
-                                                            : 'bg-white shadow-sm text-gray-800 rounded-tl-none'
-                                                            }`}
-                                                    >
-                                                        {message.type === 'text' && <p>{message.content}</p>}
-
-                                                        {message.type === 'image' && message.fileUrl && (
-                                                            <div>
-                                                                <img
-                                                                    src={`${url}/${message.fileUrl}`}
-                                                                    alt="Shared"
-                                                                    className="max-w-full rounded mb-1"
-                                                                />
-                                                                <p className="text-xs opacity-75">{message.content}</p>
-                                                            </div>
-                                                        )}
-
-                                                        {message.type === 'file' && message.fileUrl && (
-                                                            <div className="flex items-center">
-                                                                <i className="fas fa-file mr-2"></i>
-                                                                <a
-                                                                    href={`${url}/${message.fileUrl}`}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="underline"
-                                                                >
-                                                                    {message.fileName || 'Download file'}
-                                                                </a>
-                                                            </div>
-                                                        )}
-
-                                                        <div className="text-xs opacity-75 mt-1">
-                                                            {format(new Date(message.createdAt), 'HH:mm')}
-                                                        </div>
-                                                    </div>
-                                                    {isCurrentUser && (
-                                                        <div className="flex-shrink-0 ml-2">
-                                                            <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
-                                                                <i className="fas fa-user text-red-500"></i>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })
-                                    )}
-
-                                    {isTutorTyping && (
-                                        <div className="flex justify-start">
-                                            <div className="flex-shrink-0 mr-2">
-                                                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                                                    <i className="fas fa-user text-gray-500"></i>
-                                                </div>
-                                            </div>
-                                            <div className="bg-white shadow-sm text-gray-800 rounded-2xl rounded-tl-none p-3">
-                                                <div className="flex space-x-1">
-                                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div ref={messagesEndRef} />
-                                </div>
-
-                                {/* Input Area */}
-                                <div className="p-4 border-t bg-white">
-                                    {file && (
-                                        <div className="mb-2 p-2 bg-gray-100 rounded-lg flex justify-between items-center">
-                                            <div className="truncate">
-                                                <i className={`mr-2 ${file.type.startsWith('image/') ? 'fas fa-image text-green-500' : 'fas fa-file text-blue-500'}`}></i>
-                                                {file.name}
-                                            </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => setFile(null)}
-                                                className="text-gray-500 hover:text-gray-700 rounded-full"
-                                            >
-                                                <i className="fas fa-times"></i>
-                                            </Button>
-                                        </div>
-                                    )}
-
-                                    <div className="flex gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={handleFileUpload}
-                                            className="flex-shrink-0 rounded-full"
-                                        >
-                                            <i className="fas fa-paperclip"></i>
-                                        </Button>
-
-                                        <input
-                                            type="file"
-                                            ref={fileInputRef}
-                                            onChange={handleFileChange}
-                                            className="hidden"
-                                        />
-
-                                        <Input
-                                            placeholder="输入消息 / Type a message"
-                                            value={newMessage}
-                                            onChange={(e) => {
-                                                setNewMessage(e.target.value);
-                                                handleTyping();
-                                            }}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter' && !e.shiftKey) {
-                                                    e.preventDefault();
-                                                    handleSendMessage();
-                                                }
-                                            }}
-                                            className="flex-1 rounded-full"
-                                        />
-
-                                        <Button
-                                            onClick={handleSendMessage}
-                                            className="flex-shrink-0 bg-red-500 hover:bg-red-600 text-white rounded-full"
-                                        >
-                                            <i className="fas fa-paper-plane"></i>
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        </Card>
-                    </div>
-                )}
             </div>
         </div>
     );

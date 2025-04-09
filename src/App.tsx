@@ -45,6 +45,8 @@ import TutorSessions from './tutor/TutorSessions'
 import TutorPayments from './tutor/TutorPayments'
 import MyTutorStudents from './tutor/TutorStudents'
 import TutorClassLinks from './tutor/TutorClassLinks'
+import StudySettings from './study/StudySettings'
+
 function App() {
   return (
     <>
@@ -96,8 +98,8 @@ function App() {
           <Route path="subscription/:mode" element={<Subscription />} />
           <Route path="subscription/new" element={<Subscription />} />
           <Route path="schedule" element={<TutorSessions />} />
-          <Route path="payments" element={<PaymentsManagement />} />
-          <Route path="settings" element={<TutorProfile />} />
+          <Route path="payments" element={<Subscription />} />
+          <Route path="settings" element={<StudySettings />} />
           <Route path="tutors/:id" element={<TutorView />} />
         </Route>
       </Routes>

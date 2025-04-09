@@ -42,12 +42,10 @@ const StudyLayout: React.FC = () => {
     }
 
     const navItems = [
-        { path: '/study/dashboard', icon: 'fas fa-home', label: 'Dashboard' },
-        { path: '/study/tutors', icon: 'fas fa-users', label: 'Tutors' },
-        { path: '/study/messages', icon: 'fas fa-comment', label: 'Messages' },
-        { path: '/study/schedule', icon: 'fas fa-calendar-alt', label: 'Schedule' },
-        { path: '/study/payments', icon: 'fas fa-credit-card', label: 'Payments' },
-        { path: '/study/settings', icon: 'fas fa-cog', label: 'Settings' },
+        { path: '/study/dashboard', icon: 'fas fa-home', label: '主页', englishLabel: 'Dashboard' },
+        { path: '/study/tutors', icon: 'fas fa-users', label: '老师', englishLabel: 'Tutors' },
+        { path: '/study/payments', icon: 'fas fa-credit-card', label: '支付', englishLabel: 'Payments' },
+        { path: '/study/settings', icon: 'fas fa-cog', label: '设置', englishLabel: 'Settings' },
     ];
 
     const avatarUrl = user?.avatarSeed
@@ -55,10 +53,10 @@ const StudyLayout: React.FC = () => {
         : generateDicebearAvatar(user?.email || 'default');
 
     return (
-        <div className="flex h-screen bg-gray-50">
+        <div className="flex h-screen bg-gradient-to-b from-red-50 via-red-50/50 to-white">
             {/* Sidebar */}
             <div
-                className={`bg-white h-full shadow-md transition-all duration-300 flex flex-col ${isCollapsed ? 'w-20' : 'w-64'
+                className={`bg-white h-full shadow-lg rounded-r-2xl transition-all duration-300 flex flex-col ${isCollapsed ? 'w-20' : 'w-64'
                     }`}
             >
                 <div className="p-4 border-b flex justify-between items-center">
@@ -67,7 +65,7 @@ const StudyLayout: React.FC = () => {
                     </div>
                     <button
                         onClick={() => setIsCollapsed(!isCollapsed)}
-                        className="p-1 rounded-full hover:bg-gray-100"
+                        className="p-2 rounded-full hover:bg-red-50 text-red-500"
                     >
                         {isCollapsed ? (
                             <i className="fas fa-chevron-right"></i>
@@ -79,18 +77,23 @@ const StudyLayout: React.FC = () => {
 
                 {/* Nav Links */}
                 <nav className="flex-1 overflow-y-auto py-4">
-                    <ul className="space-y-2">
+                    <ul className="space-y-1 px-2">
                         {navItems.map((item) => (
                             <li key={item.path}>
                                 <Link
                                     to={item.path}
-                                    className={`flex items-center px-4 py-3 ${location.pathname === item.path
-                                        ? 'bg-blue-50 text-blue-600'
-                                        : 'text-gray-700 hover:bg-gray-100'
+                                    className={`flex items-center px-4 py-3 rounded-xl transition-colors ${location.pathname === item.path
+                                            ? 'bg-red-50 text-red-500'
+                                            : 'text-gray-700 hover:bg-gray-50'
                                         } ${isCollapsed ? 'justify-center' : 'gap-3'}`}
                                 >
                                     <i className={`${item.icon} ${isCollapsed ? 'text-xl' : ''}`}></i>
-                                    {!isCollapsed && <span>{item.label}</span>}
+                                    {!isCollapsed && (
+                                        <div className="flex flex-col">
+                                            <span className="text-sm">{item.label}</span>
+                                            <span className="text-xs text-gray-500">{item.englishLabel}</span>
+                                        </div>
+                                    )}
                                 </Link>
                             </li>
                         ))}
@@ -99,11 +102,12 @@ const StudyLayout: React.FC = () => {
 
                 {/* User Profile */}
                 <div className="border-t p-4">
-                    <div className="flex items-center gap-3">
+                    <div className={`flex items-center gap-3 p-2 rounded-xl hover:bg-red-50 transition-colors ${!isCollapsed ? 'cursor-pointer' : ''
+                        }`}>
                         <img
                             src={avatarUrl}
                             alt={user?.name || 'User'}
-                            className="w-10 h-10 rounded-full"
+                            className="w-10 h-10 rounded-full border-2 border-red-100"
                         />
                         {!isCollapsed && (
                             <div className="flex-1 min-w-0">
@@ -116,11 +120,16 @@ const StudyLayout: React.FC = () => {
                     </div>
                     <button
                         onClick={handleLogout}
-                        className={`mt-4 flex items-center text-red-500 hover:text-red-700 ${isCollapsed ? 'justify-center w-full' : 'gap-2'
+                        className={`mt-4 flex items-center text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-xl w-full transition-colors ${isCollapsed ? 'justify-center' : 'gap-2'
                             }`}
                     >
                         <i className="fas fa-sign-out-alt"></i>
-                        {!isCollapsed && <span>Log out</span>}
+                        {!isCollapsed && (
+                            <div className="flex flex-col items-start">
+                                <span>退出登录</span>
+                                <span className="text-xs text-gray-500">Log out</span>
+                            </div>
+                        )}
                     </button>
                 </div>
             </div>
