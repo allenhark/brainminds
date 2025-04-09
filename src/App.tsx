@@ -12,6 +12,8 @@ import BeijingPage from './pages/beijing'
 import BeijingBusinessEnglish from './pages/beijing/business-english'
 import ShanghaiPage from './pages/shanghai'
 import ShanghaiConversation from './pages/shanghai/conversation'
+import GuangzhouPage from './pages/guangzhou'
+import GuangzhouPronunciation from './pages/guangzhou/pronunciation'
 
 // Admin imports
 import AdminLayout from './admin/AdminLayout'
@@ -86,11 +88,11 @@ function App() {
           <Route path="/shanghai/conversation" element={<ShanghaiConversation />} />
 
           {/* Guangzhou routes */}
-          <Route path="/guangzhou" element={<Home />} />
-          <Route path="/guangzhou/business-english" element={<Home />} />
-          <Route path="/guangzhou/ielts" element={<Home />} />
-          <Route path="/guangzhou/kids" element={<Home />} />
-          <Route path="/guangzhou/pronunciation" element={<Home />} />
+          <Route path="/guangzhou" element={<GuangzhouPage />} />
+          <Route path="/guangzhou/business-english" element={<GuangzhouPage />} />
+          <Route path="/guangzhou/ielts" element={<GuangzhouPage />} />
+          <Route path="/guangzhou/kids" element={<GuangzhouPage />} />
+          <Route path="/guangzhou/pronunciation" element={<GuangzhouPronunciation />} />
 
           {/* Shenzhen routes */}
           <Route path="/shenzhen" element={<Home />} />
