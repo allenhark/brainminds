@@ -67,6 +67,7 @@ function App() {
         {/* Admin routes */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Dashboard />} />
+          <Route path='dashboard' element={<Dashboard />} />
           <Route path="tutors" element={<TutorManagement />} />
           <Route path="tutors/:id" element={<TutorDetails />} />
           <Route path="tutors/:id/edit" element={<TutorEdit />} />
