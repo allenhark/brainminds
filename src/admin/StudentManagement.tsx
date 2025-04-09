@@ -6,146 +6,88 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 type Student = {
     id: number;
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
-    phone: string;
-    grade: string;
-    subjects: string[];
-    totalSessions: number;
-    status: 'active' | 'inactive';
-    joinDate: string;
-    subscriptionStatus: 'subscribed' | 'not_subscribed';
-    subscriptionExpiry?: string;
+    phone: string | null;
+    status: 'ACTIVE' | 'INACTIVE';
+    createdAt: string;
+    subscription: {
+        id: number;
+        userId: number;
+        status: 'ACTIVE' | 'EXPIRED' | 'CANCELED' | 'PENDING';
+        startDate: string;
+        endDate: string;
+        amount: number;
+        paymentMethod: string | null;
+        paymentId: string | null;
+        notes: string | null;
+        createdBy: number | null;
+        canceledAt: string | null;
+        cancelReason: string | null;
+        createdAt: string;
+        updatedAt: string;
+    } | null;
+};
+
+type Pagination = {
+    total: number;
+    totalPages: number;
+    currentPage: number;
+    limit: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
 };
 
 const StudentManagement: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
-    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
-    const [filterGrade, setFilterGrade] = useState('all');
-    const [filterSubscription, setFilterSubscription] = useState<'all' | 'subscribed' | 'not_subscribed'>('all');
+    const [filterStatus, setFilterStatus] = useState<'all' | 'ACTIVE' | 'INACTIVE'>('all');
     const [students, setStudents] = useState<Student[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-
-    // Dialogs state
+    const [error, setError] = useState<string | null>(null);
+    const [pagination, setPagination] = useState<Pagination | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isSubscriptionDialogOpen, setIsSubscriptionDialogOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [subscriptionMonths, setSubscriptionMonths] = useState(1);
+    const navigate = useNavigate();
 
     useEffect(() => {
-        const fetchStudents = async () => {
-            try {
-                setIsLoading(true);
-                const response = await Api.get('/admin/students');
-                setStudents(response.data);
-            } catch (error) {
-                console.error('Failed to fetch students:', error);
-                toast.error('Failed to load students');
-
-                // Sample student data for development
-                setStudents([
-                    {
-                        id: 1,
-                        name: 'Emily Johnson',
-                        email: 'emily.johnson@example.com',
-                        phone: '(123) 456-7890',
-                        grade: '10th Grade',
-                        subjects: ['Mathematics', 'Physics'],
-                        totalSessions: 15,
-                        status: 'active',
-                        joinDate: '2022-03-15',
-                        subscriptionStatus: 'subscribed',
-                        subscriptionExpiry: '2023-05-15'
-                    },
-                    {
-                        id: 2,
-                        name: 'Michael Brown',
-                        email: 'michael.brown@example.com',
-                        phone: '(234) 567-8901',
-                        grade: '11th Grade',
-                        subjects: ['Physics', 'Chemistry'],
-                        totalSessions: 8,
-                        status: 'active',
-                        joinDate: '2022-04-22',
-                        subscriptionStatus: 'not_subscribed'
-                    },
-                    {
-                        id: 3,
-                        name: 'Emma Davis',
-                        email: 'emma.davis@example.com',
-                        phone: '(345) 678-9012',
-                        grade: '9th Grade',
-                        subjects: ['Chemistry', 'Biology'],
-                        totalSessions: 12,
-                        status: 'active',
-                        joinDate: '2022-05-10',
-                        subscriptionStatus: 'subscribed',
-                        subscriptionExpiry: '2023-06-10'
-                    },
-                    {
-                        id: 4,
-                        name: 'William Taylor',
-                        email: 'william.taylor@example.com',
-                        phone: '(456) 789-0123',
-                        grade: '12th Grade',
-                        subjects: ['Biology', 'English'],
-                        totalSessions: 20,
-                        status: 'inactive',
-                        joinDate: '2022-02-18',
-                        subscriptionStatus: 'not_subscribed'
-                    },
-                    {
-                        id: 5,
-                        name: 'Olivia Wilson',
-                        email: 'olivia.wilson@example.com',
-                        phone: '(567) 890-1234',
-                        grade: '10th Grade',
-                        subjects: ['English Literature', 'History'],
-                        totalSessions: 10,
-                        status: 'active',
-                        joinDate: '2022-06-01',
-                        subscriptionStatus: 'not_subscribed'
-                    },
-                    {
-                        id: 6,
-                        name: 'James Anderson',
-                        email: 'james.anderson@example.com',
-                        phone: '(678) 901-2345',
-                        grade: '8th Grade',
-                        subjects: ['Mathematics', 'Science'],
-                        totalSessions: 5,
-                        status: 'active',
-                        joinDate: '2022-06-15',
-                        subscriptionStatus: 'not_subscribed'
-                    },
-                ]);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
         fetchStudents();
-    }, []);
+    }, [currentPage]);
 
-    // Get unique grades for filter
-    const grades = ['all', ...Array.from(new Set(students.map(student => student.grade)))];
+    const fetchStudents = async () => {
+        try {
+            setIsLoading(true);
+            setError(null);
+            const response = await Api.get(`/admin/students?page=${currentPage}&limit=10`);
+            setStudents(response.data.data);
+            setPagination(response.data.pagination);
+        } catch (error) {
+            console.error('Failed to fetch students:', error);
+            setError('Failed to load students. Please try again later.');
+            toast.error('Failed to load students');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-    // Filter students based on search query, status, grade, and subscription
+    // Filter students based on search query and status
     const filteredStudents = students.filter(student => {
+        const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
         const matchesSearch =
-            student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            student.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            student.subjects.some(subject => subject.toLowerCase().includes(searchQuery.toLowerCase()));
+            fullName.includes(searchQuery.toLowerCase()) ||
+            student.email.toLowerCase().includes(searchQuery.toLowerCase());
 
         const matchesStatus = filterStatus === 'all' || student.status === filterStatus;
-        const matchesGrade = filterGrade === 'all' || student.grade === filterGrade;
-        const matchesSubscription = filterSubscription === 'all' || student.subscriptionStatus === filterSubscription;
 
-        return matchesSearch && matchesStatus && matchesGrade && matchesSubscription;
+        return matchesSearch && matchesStatus;
     });
 
     const handleAddStudent = () => {
@@ -173,15 +115,7 @@ const StudentManagement: React.FC = () => {
         try {
             await Api.delete(`/admin/students/${id}/subscription`);
             toast.success('Subscription cancelled successfully');
-
-            // Update local state
-            setStudents(prevStudents =>
-                prevStudents.map(student =>
-                    student.id === id
-                        ? { ...student, subscriptionStatus: 'not_subscribed', subscriptionExpiry: undefined }
-                        : student
-                )
-            );
+            await fetchStudents(); // Refresh the data
         } catch (error) {
             console.error('Failed to cancel subscription:', error);
             toast.error('Failed to cancel subscription');
@@ -201,32 +135,32 @@ const StudentManagement: React.FC = () => {
                 expiryDate: expiryDate.toISOString()
             });
 
-            toast.success(`Subscription activated for ${selectedStudent.name}`);
-
-            // Update local state
-            setStudents(prevStudents =>
-                prevStudents.map(student =>
-                    student.id === selectedStudent.id
-                        ? {
-                            ...student,
-                            subscriptionStatus: 'subscribed',
-                            subscriptionExpiry: expiryDate.toISOString().split('T')[0]
-                        }
-                        : student
-                )
-            );
-
+            toast.success(`Subscription activated for ${selectedStudent.firstName} ${selectedStudent.lastName}`);
             setIsSubscriptionDialogOpen(false);
+            await fetchStudents(); // Refresh the data
         } catch (error) {
             console.error('Failed to update subscription:', error);
             toast.error('Failed to update subscription');
         }
     };
 
+    const handlePageChange = (newPage: number) => {
+        setCurrentPage(newPage);
+    };
+
     if (isLoading) {
         return (
             <div className="flex justify-center items-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center py-12">
+                <div className="text-red-500 mb-4">{error}</div>
+                <Button onClick={fetchStudents}>Retry</Button>
             </div>
         );
     }
@@ -242,7 +176,7 @@ const StudentManagement: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-lg p-5 shadow-sm mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <div className="relative">
                             <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -262,37 +196,8 @@ const StudentManagement: React.FC = () => {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Statuses</SelectItem>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="inactive">Inactive</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div>
-                        <Select value={filterGrade} onValueChange={setFilterGrade}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Grade" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {grades.map((grade) => (
-                                    <SelectItem key={grade} value={grade}>
-                                        {grade === 'all' ? 'All Grades' : grade}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div>
-                        <Select
-                            value={filterSubscription}
-                            onValueChange={(value: any) => setFilterSubscription(value)}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Subscription" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Subscriptions</SelectItem>
-                                <SelectItem value="subscribed">Subscribed</SelectItem>
-                                <SelectItem value="not_subscribed">Not Subscribed</SelectItem>
+                                <SelectItem value="ACTIVE">Active</SelectItem>
+                                <SelectItem value="INACTIVE">Inactive</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -308,15 +213,6 @@ const StudentManagement: React.FC = () => {
                                     </th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Contact
-                                    </th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Grade
-                                    </th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Subjects
-                                    </th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Sessions
                                     </th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Status
@@ -340,34 +236,21 @@ const StudentManagement: React.FC = () => {
                                                 <img
                                                     className="h-10 w-10 rounded-full"
                                                     src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${student.email}`}
-                                                    alt={student.name}
+                                                    alt={`${student.firstName} ${student.lastName}`}
                                                 />
                                                 <div className="ml-4">
-                                                    <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                                                    <div className="text-sm font-medium text-gray-900">
+                                                        {student.firstName} {student.lastName}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm text-gray-900">{student.email}</div>
-                                            <div className="text-sm text-gray-500">{student.phone}</div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {student.grade}
+                                            <div className="text-sm text-gray-500">{student.phone || 'No phone'}</div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex flex-wrap gap-1">
-                                                {student.subjects.map((subject, index) => (
-                                                    <Badge key={index} variant="secondary">
-                                                        {subject}
-                                                    </Badge>
-                                                ))}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {student.totalSessions}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${student.status === 'active'
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${student.status === 'ACTIVE'
                                                 ? 'bg-green-100 text-green-800'
                                                 : 'bg-red-100 text-red-800'
                                                 }`}>
@@ -375,30 +258,38 @@ const StudentManagement: React.FC = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            {student.subscriptionStatus === 'subscribed' ? (
+                                            {student.subscription ? (
                                                 <div>
-                                                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                        Subscribed
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${student.subscription.status === 'ACTIVE'
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : student.subscription.status === 'EXPIRED'
+                                                            ? 'bg-red-100 text-red-800'
+                                                            : 'bg-gray-100 text-gray-800'
+                                                        }`}>
+                                                        {student.subscription.status}
                                                     </span>
                                                     <div className="text-xs text-gray-500 mt-1">
-                                                        Expires: {student.subscriptionExpiry}
+                                                        Expires: {new Date(student.subscription.endDate).toLocaleDateString()}
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                                    Not Subscribed
+                                                    No Subscription
                                                 </span>
                                             )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {new Date(student.joinDate).toLocaleDateString()}
+                                            {new Date(student.createdAt).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex justify-end items-center space-x-2">
+                                                <Button variant="ghost" size="sm" onClick={() => navigate(`/admin/students/${student.id}`)}>
+                                                    <i className="fas fa-eye text-blue-500"></i>
+                                                </Button>
                                                 <Button variant="ghost" size="sm" onClick={() => handleEditStudent(student.id)}>
                                                     <i className="fas fa-edit text-blue-500"></i>
                                                 </Button>
-                                                {student.subscriptionStatus === 'subscribed' ? (
+                                                {student.subscription?.status === 'ACTIVE' ? (
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
@@ -423,6 +314,33 @@ const StudentManagement: React.FC = () => {
                         </table>
                     </div>
                 </div>
+
+                {/* Pagination Controls */}
+                {pagination && (
+                    <div className="flex items-center justify-between mt-4">
+                        <div className="text-sm text-gray-700">
+                            Showing {((pagination.currentPage - 1) * pagination.limit) + 1} to {Math.min(pagination.currentPage * pagination.limit, pagination.total)} of {pagination.total} students
+                        </div>
+                        <div className="flex space-x-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePageChange(pagination.currentPage - 1)}
+                                disabled={!pagination.hasPreviousPage}
+                            >
+                                Previous
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePageChange(pagination.currentPage + 1)}
+                                disabled={!pagination.hasNextPage}
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Subscription Dialog */}
@@ -436,7 +354,7 @@ const StudentManagement: React.FC = () => {
                         <div className="py-4">
                             <div className="mb-4">
                                 <p className="text-sm font-medium text-gray-700">Student</p>
-                                <p>{selectedStudent.name}</p>
+                                <p>{selectedStudent.firstName} {selectedStudent.lastName}</p>
                             </div>
 
                             <div className="mb-4">

@@ -16,6 +16,7 @@ import ScheduleManagement from './admin/ScheduleManagement'
 import PaymentsManagement from './admin/PaymentsManagement'
 import MessagingManagement from './admin/MessagingManagement'
 import Support from './admin/Support'
+import StudentView from './admin/StudentView'
 
 // Tutor management imports
 import TutorDetails from './admin/tutors/TutorDetails'
@@ -73,6 +74,7 @@ function App() {
           <Route path="tutors/:id/students" element={<TutorStudents />} />
           <Route path="tutors/create" element={<CreateTutor />} />
           <Route path="students" element={<StudentManagement />} />
+          <Route path="students/:id" element={<StudentView />} />
           <Route path="schedule" element={<ScheduleManagement />} />
           <Route path="payments" element={<PaymentsManagement />} />
           <Route path="messaging" element={<MessagingManagement />} />

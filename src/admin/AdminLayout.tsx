@@ -48,7 +48,7 @@ const AdminLayout: React.FC = () => {
             items: [
                 { icon: 'far fa-user', label: 'Tutors Management', path: '/admin/tutors' },
                 { icon: 'far fa-user-circle', label: 'Add Tutor', path: '/admin/tutors/create' },
-                { icon: 'far fa-users', label: 'Payment', path: '/admin/tutors/payments' }
+                // { icon: 'far fa-users', label: 'Payment', path: '/admin/tutors/payments' }
             ]
         },
         {
@@ -64,13 +64,13 @@ const AdminLayout: React.FC = () => {
                 { icon: 'far fa-envelope', label: 'Students', path: '/admin/messages/students', soon: true },
             ]
         },
-        {
-            category: 'Payment',
-            items: [
-                { icon: 'far fa-window-maximize', label: 'Modals', path: '/admin/modals', soon: true },
-                { icon: 'far fa-hat-wizard', label: 'Wizards', path: '/admin/wizards', soon: true }
-            ]
-        }
+        // {
+        //     category: 'Payment',
+        //     items: [
+        //         { icon: 'far fa-window-maximize', label: 'Modals', path: '/admin/modals', soon: true },
+        //         { icon: 'far fa-hat-wizard', label: 'Wizards', path: '/admin/wizards', soon: true }
+        //     ]
+        // }
     ];
 
     const handleLogout = () => {

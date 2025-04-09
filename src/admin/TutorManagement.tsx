@@ -223,7 +223,7 @@ const TutorManagement: React.FC = () => {
                                                         <div className="h-10 w-10 rounded-full overflow-hidden">
                                                             {tutor.avatar ? (
                                                                 <img
-                                                                    src={`${url}${tutor.avatar}`}
+                                                                    src={`${url}/${tutor.avatar}`}
                                                                     alt={`${tutor.firstName} ${tutor.lastName}`}
                                                                     className="h-full w-full object-cover"
                                                                 />
