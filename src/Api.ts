@@ -1,5 +1,6 @@
 import axios from 'axios';
 import wsService from './services/wsService';
+import { url } from "@/config";
 
 // Define user data interface
 interface UserData {
@@ -9,7 +10,7 @@ interface UserData {
     [key: string]: string | undefined; // More specific type for index signature
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = `${url}/api`;
 
 const Api = axios.create({
     baseURL: API_URL,
@@ -45,8 +46,8 @@ Api.interceptors.response.use(
         // Handle 401 Unauthorized errors
         if (error.response && error.response.status === 401) {
             // Clear token and redirect to login
-            //localStorage.removeItem('jwt');
-            //window.location.href = '/login';
+            localStorage.removeItem('jwt');
+            window.location.href = '/login';
             console.log('401 Unauthorized error');
             throw error;
         }

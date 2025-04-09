@@ -47,6 +47,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
 import { url } from "@/config";
+import HelmetComponent from "@/components/HelmetComponent";
 
 // Types definition based on Prisma schema
 interface User {
@@ -590,6 +591,11 @@ const StudentView: React.FC = () => {
 
     return (
         <div className="p-6">
+            <HelmetComponent
+                title={`${student?.firstName} ${student?.lastName} - Student Details`}
+                description={`View and manage details for ${student?.firstName} ${student?.lastName}`}
+            />
+
             <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-4">
                     <Button variant="outline" onClick={() => navigate("/admin/students")}>
