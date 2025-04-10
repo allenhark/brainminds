@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import Api from '@/Api';
 import { useUser } from '@/contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
+import HelmetComponent from '@/components/HelmetComponent';
+import { toast } from 'react-hot-toast';
 
 // Define error type for API responses
 interface ApiError {
@@ -149,6 +151,7 @@ const LoginSignup = () => {
         verificationCode: '',
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [isPasswordResetFlow, setIsPasswordResetFlow] = useState(false);
     const { login, refreshUser } = useUser();
     const navigate = useNavigate();
 
@@ -259,6 +262,7 @@ const LoginSignup = () => {
             if (response.status === 200) {
                 // Show success message regardless of whether email exists
                 setErrors({});
+                setIsPasswordResetFlow(true); // Set the password reset flow flag
                 setFormState('verifyEmail');
             }
         } catch (error: unknown) {
@@ -288,27 +292,38 @@ const LoginSignup = () => {
         try {
             const validatedCode = verificationSchema.parse({ code: formData.verificationCode });
 
-            const response = await Api.post('/auth/verify-email', {
-                code: validatedCode.code,
-                email: formData.email
-            });
+            if (isPasswordResetFlow) {
+                // For password reset flow, we just validate the code is entered
+                // and redirect to the new password form
+                // The actual verification will happen when setting the new password
+                setFormState('newPassword');
+            } else {
+                // For email verification flow (signup)
+                const response = await Api.post('/auth/verify-email', {
+                    code: validatedCode.code,
+                    email: formData.email
+                });
 
-            // Check if token is returned (auto-login after verification)
-            if (response.data.token) {
-                // Store token and user data
-                sessionStorage.setItem('jwt', response.data.token);
+                // Check if token is returned (auto-login after verification)
+                if (response.data.token) {
+                    // Store token and user data
+                    sessionStorage.setItem('jwt', response.data.token);
 
-                // If we have user data, update the user context
-                if (response.data.user) {
-                    // Redirect to home page
-                    window.location.href = '/';
+                    // If we have user data, update the user context
+                    if (response.data.user) {
+                        // Redirect to home page
+                        //show toaster
+                        toast.success('Your account has been verified, please login to continue / 您的账户已验证，请登录继续');
+                        //window.location.href = '/';
+                        navigate('/login');
+                    } else {
+                        // If no user data, go to login
+                        setFormState('login');
+                    }
                 } else {
-                    // If no user data, go to login
+                    // If no token, just go to login
                     setFormState('login');
                 }
-            } else {
-                // If no token, just go to login
-                setFormState('login');
             }
         } catch (error: unknown) {
             if (error instanceof z.ZodError) {
@@ -360,7 +375,9 @@ const LoginSignup = () => {
                 // If we have user data, update the user context
                 if (response.data.user) {
                     // Redirect to home page
-                    window.location.href = '/';
+                    //window.location.href = '/';
+                    toast.success('Your password has been reset, please login to continue / 您的密码已重置，请登录继续');
+                    navigate('/login');
                 } else {
                     // If no user data, go to login
                     setFormState('login');
@@ -609,8 +626,12 @@ const LoginSignup = () => {
         <form onSubmit={handleVerifyCode} className="space-y-8">
             <div className="space-y-6">
                 <label className="block text-xl text-center">
-                    <span className="block font-medium">输入验证码</span>
-                    <span className="block text-gray-600 mt-1">Enter verification code</span>
+                    <span className="block font-medium">
+                        {isPasswordResetFlow ? '输入密码重置验证码' : '输入验证码'}
+                    </span>
+                    <span className="block text-gray-600 mt-1">
+                        {isPasswordResetFlow ? 'Enter password reset code' : 'Enter verification code'}
+                    </span>
                 </label>
                 <OTPInput
                     value={formData.verificationCode}
@@ -679,6 +700,11 @@ const LoginSignup = () => {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-red-50 via-red-50/50 to-white px-4 -mt-20 pb-40 pt-20">
+            <HelmetComponent
+                title="Login / Signup 登录/注册"
+                description="登录或注册到我们的平台"
+            />
+
             <div className="max-w-md w-full py-12">
                 <div className="text-center mb-8">
                     <h2 className="text-3xl font-bold">

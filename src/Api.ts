@@ -46,8 +46,8 @@ Api.interceptors.response.use(
         // Handle 401 Unauthorized errors
         if (error.response && error.response.status === 401) {
             // Clear token and redirect to login
-            localStorage.removeItem('jwt');
-            window.location.href = '/login';
+            // localStorage.removeItem('jwt');
+            //window.location.href = '/login';
             console.log('401 Unauthorized error');
             throw error;
         }
