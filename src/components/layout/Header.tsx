@@ -145,7 +145,7 @@ export default function Header() {
                 成为老师 Become a Tutor
               </Link>
               <Link to="/login" className="bg-red-500 hover:bg-red-400 text-white px-4 py-2 text-center rounded-2xl">
-                登录 Log in
+                登录 Log in / 注册 Register
               </Link>
             </>
           ) : (
@@ -181,7 +181,7 @@ export default function Header() {
                     className="bg-red-500 hover:bg-red-400 text-white px-4 py-2 text-center rounded-2xl"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    登录 Log in
+                    登录 Log in / 注册 Register
                   </Link>
                 </>
               ) : (
