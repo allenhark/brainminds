@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import Layout from './components/layout/Layout'
 import Home from './pages/Home'
 import Pricing from './pages/Pricing'
@@ -64,11 +64,24 @@ import TutorClassLinks from './tutor/TutorClassLinks'
 import StudySettings from './study/StudySettings'
 import TutorNotifications from './tutor/TutorNotifications'
 import UserManagement from './admin/UserManagement'
+import { useEffect } from 'react'
+
+// ScrollToTop component to reset scroll position on route change
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
 
 function App() {
   return (
     <>
       <Toaster position="top-right" />
+      <ScrollToTop />
       <Routes>
         {/* Main site routes */}
         <Route element={<Layout />}>
