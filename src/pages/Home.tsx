@@ -321,8 +321,8 @@ export default function Home() {
                                 <span className="block text-red-500">如何支付课程费用？</span>
                                 <span className="block text-gray-700">How do I pay for lessons?</span>
                             </h3>
-                            <p className="text-gray-800">通过我们的安全支付系统，可以使用信用卡或支付宝进行支付。</p>
-                            <p className="text-sm text-gray-600">Use our secure payment system with credit card or Alipay options.</p>
+                            <p className="text-gray-800">通过我们的安全支付系统，可以使用支付宝或微信支付进行支付。</p>
+                            <p className="text-sm text-gray-600">Use our secure payment system with Alipay or WeChat Pay options.</p>
                         </div>
 
                         <div className="bg-white p-6 rounded-2xl shadow-sm">
