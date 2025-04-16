@@ -51,6 +51,7 @@ export default function BecomeATutor() {
         lastName: "",
         email: "",
         password: "",
+        wechatId: "",
         educationLevel: "",
         teachingStyle: "",
         teachingMaterials: "",
@@ -168,6 +169,7 @@ export default function BecomeATutor() {
                     lastName: formData.lastName,
                     email: formData.email,
                     password: formData.password,
+                    wechatId: formData.wechatId,
                     educationLevel: formData.educationLevel,
                     teachingStyle: formData.teachingStyle,
                     teachingMaterials: formData.teachingMaterials,
@@ -439,71 +441,82 @@ export default function BecomeATutor() {
                         )}
 
                         {currentStep === 'personal-info' && (
-                            <form onSubmit={handleFormSubmit} className="space-y-6">
-                                <h2 className="text-2xl font-bold mb-6">
-                                    个人信息
-                                    <span className="block text-lg mt-2 text-gray-600">Personal Information</span>
-                                </h2>
-                                <div className="grid grid-cols-2 gap-4">
+                            <form onSubmit={handleFormSubmit} className="space-y-8">
+                                <div className="space-y-6">
+                                    <h2 className="text-2xl font-bold mb-6">
+                                        个人信息
+                                        <span className="block text-lg mt-2 text-gray-600">Personal Information</span>
+                                    </h2>
+                                    <div className="grid md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">名字 First Name</label>
+                                            <Input
+                                                name="firstName"
+                                                value={formData.firstName}
+                                                onChange={handleInputChange}
+                                                required
+                                                className="w-full rounded-lg border border-gray-300 focus:border-red-500 focus:ring-red-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">姓氏 Last Name</label>
+                                            <Input
+                                                name="lastName"
+                                                value={formData.lastName}
+                                                onChange={handleInputChange}
+                                                required
+                                                className="w-full rounded-lg border border-gray-300 focus:border-red-500 focus:ring-red-500"
+                                            />
+                                        </div>
+                                    </div>
                                     <div>
-                                        <label className="block text-sm font-medium mb-1">名字 First Name</label>
+                                        <label className="block text-sm font-medium mb-1">邮箱 Email</label>
                                         <Input
-                                            name="firstName"
-                                            value={formData.firstName}
+                                            type="email"
+                                            name="email"
+                                            value={formData.email}
                                             onChange={handleInputChange}
                                             required
                                             className="w-full rounded-lg border border-gray-300 focus:border-red-500 focus:ring-red-500"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium mb-1">姓氏 Last Name</label>
+                                        <label className="block text-sm font-medium mb-1">微信号 WeChat ID</label>
                                         <Input
-                                            name="lastName"
-                                            value={formData.lastName}
+                                            name="wechatId"
+                                            value={formData.wechatId}
+                                            onChange={handleInputChange}
+                                            placeholder="选填 Optional"
+                                            className="w-full rounded-lg border border-gray-300 focus:border-red-500 focus:ring-red-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">密码 Password</label>
+                                        <Input
+                                            type="password"
+                                            name="password"
+                                            value={formData.password}
                                             onChange={handleInputChange}
                                             required
                                             className="w-full rounded-lg border border-gray-300 focus:border-red-500 focus:ring-red-500"
                                         />
                                     </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">邮箱 Email</label>
-                                    <Input
-                                        type="email"
-                                        name="email"
-                                        value={formData.email}
-                                        onChange={handleInputChange}
-                                        required
-                                        className="w-full rounded-lg border border-gray-300 focus:border-red-500 focus:ring-red-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">密码 Password</label>
-                                    <Input
-                                        type="password"
-                                        name="password"
-                                        value={formData.password}
-                                        onChange={handleInputChange}
-                                        required
-                                        className="w-full rounded-lg border border-gray-300 focus:border-red-500 focus:ring-red-500"
-                                    />
-                                </div>
-                                <div className="flex justify-between mt-8">
-                                    <Button
-                                        type="button"
-                                        onClick={handlePreviousStep}
-                                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full py-2 px-6"
-                                        disabled={isLoading}
-                                    >
-                                        上一步 Previous
-                                    </Button>
-                                    <Button
-                                        type="submit"
-                                        className="bg-red-500 hover:bg-red-600 text-white rounded-full py-2 px-6"
-                                        disabled={isLoading}
-                                    >
-                                        {isLoading ? "提交中..." : "下一步 Next"}
-                                    </Button>
+                                    <div className="flex justify-between mt-8">
+                                        <Button
+                                            type="button"
+                                            onClick={handlePreviousStep}
+                                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full py-2 px-4"
+                                        >
+                                            上一步 Previous
+                                        </Button>
+                                        <Button
+                                            type="submit"
+                                            className="bg-red-500 hover:bg-red-600 text-white rounded-full py-2 px-4"
+                                            disabled={isLoading}
+                                        >
+                                            {isLoading ? "保存中..." : "保存并继续 Save & Continue"}
+                                        </Button>
+                                    </div>
                                 </div>
                             </form>
                         )}

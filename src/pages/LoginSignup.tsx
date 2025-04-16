@@ -30,6 +30,7 @@ const signupSchema = z.object({
     email: z.string().email('Invalid email format'),
     password: z.string().min(8, 'Password must be at least 8 characters'),
     confirmPassword: z.string(),
+    wechatId: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
@@ -149,6 +150,7 @@ const LoginSignup = () => {
         password: '',
         confirmPassword: '',
         verificationCode: '',
+        wechatId: '',
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [isPasswordResetFlow, setIsPasswordResetFlow] = useState(false);
@@ -215,7 +217,8 @@ const LoginSignup = () => {
                 firstName: validatedData.firstName,
                 lastName: validatedData.lastName,
                 email: validatedData.email,
-                password: validatedData.password
+                password: validatedData.password,
+                wechatId: validatedData.wechatId || null
             });
 
             // Check for requiresVerification flag from backend
@@ -533,6 +536,20 @@ const LoginSignup = () => {
                     className="w-full h-12 text-base rounded-xl bg-white border-gray-200 focus:border-red-500 focus:ring-red-500"
                 />
                 {errors.email && <p className="text-red-500 mt-1 text-sm">{errors.email}</p>}
+            </div>
+            <div className="space-y-2">
+                <label className="block text-lg mb-1">
+                    <span className="block font-medium">微信号（可选）</span>
+                    <span className="block text-gray-600 text-sm">WeChat ID (Optional)</span>
+                </label>
+                <Input
+                    type="text"
+                    name="wechatId"
+                    value={formData.wechatId}
+                    onChange={handleInputChange}
+                    className="w-full h-12 text-base rounded-xl bg-white border-gray-200 focus:border-red-500 focus:ring-red-500"
+                />
+                {errors.wechatId && <p className="text-red-500 mt-1 text-sm">{errors.wechatId}</p>}
             </div>
             <div className="space-y-2">
                 <label className="block text-lg mb-1">
