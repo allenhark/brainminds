@@ -346,17 +346,16 @@ export default function Home() {
                     </h2>
                     <div className="grid md:grid-cols-3 gap-8">
                         <div>
-                            <p className="text-4xl font-bold text-blue-600 mb-2">95%</p>
-                            <p className="text-gray-600">学生提高了英语水平</p>
-                            <p className="text-sm text-gray-500">Students improved their English</p>
+                            <p className="text-4xl font-bold text-blue-600 mb-2">98.3%</p>
+                            <p className="text-gray-600">学生提高了英语水平 / Students improved their English</p>
                         </div>
                         <div>
                             <p className="text-4xl font-bold text-blue-600 mb-2">4.8/5</p>
-                            <p className="text-gray-600">Average tutor rating</p>
+                            <p className="text-gray-600">Average tutor rating / 平均老师评分</p>
                         </div>
                         <div>
-                            <p className="text-4xl font-bold text-blue-600 mb-2">1M+</p>
-                            <p className="text-gray-600">Active students</p>
+                            <p className="text-4xl font-bold text-blue-600 mb-2">567K+ </p>
+                            <p className="text-gray-600">Active students / 活跃学生</p>
                         </div>
                     </div>
                 </div>
