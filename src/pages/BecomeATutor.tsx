@@ -231,6 +231,8 @@ export default function BecomeATutor() {
         const currentIndex = APPLICATION_STEPS.findIndex(step => step.id === currentStep);
         if (currentIndex < APPLICATION_STEPS.length - 1) {
             setCurrentStep(APPLICATION_STEPS[currentIndex + 1].id as ApplicationStep);
+            // Scroll to the top of the page container
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
 
@@ -238,6 +240,8 @@ export default function BecomeATutor() {
         const currentIndex = APPLICATION_STEPS.findIndex(step => step.id === currentStep);
         if (currentIndex > 0) {
             setCurrentStep(APPLICATION_STEPS[currentIndex - 1].id as ApplicationStep);
+            // Scroll to the top of the page container
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
 
@@ -422,7 +426,11 @@ export default function BecomeATutor() {
                                     </div>
                                 </div>
                                 <Button
-                                    onClick={() => setCurrentStep('personal-info')}
+                                    onClick={() => {
+                                        setCurrentStep('personal-info');
+                                        // Scroll to the top of the page container
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }}
                                     className="w-full bg-red-500 hover:bg-red-600 text-white rounded-full py-3 text-lg mt-8"
                                 >
                                     开始申请 Start Application
