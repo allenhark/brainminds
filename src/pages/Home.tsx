@@ -87,29 +87,37 @@ export default function Home() {
                             <div className="flex items-center gap-2">
                                 <span className="text-red-500">⏰</span>
                                 <div>
-                                    <span className="block text-gray-800">随时随地学习英语</span>
-                                    <span className="block text-sm text-gray-600">Quality English tutoring at your fingertips</span>
+                                    <span className="block text-gray-800">灵活的学习时间</span>
+                                    <span className="block text-sm text-gray-600">Flexible learning schedule</span>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-red-500">💻</span>
                                 <div>
-                                    <span className="block text-gray-800">超过1.7万英语老师</span>
-                                    <span className="block text-sm text-gray-600">17,000+ English tutors available</span>
+                                    <span className="block text-gray-800">超过1.7万专业英语教师</span>
+                                    <span className="block text-sm text-gray-600">17,000+ professional English tutors</span>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-red-500">✅</span>
                                 <div>
-                                    <span className="block text-gray-800">实名认证</span>
-                                    <span className="block text-sm text-gray-600">Verified reviews</span>
+                                    <span className="block text-gray-800">教师资质认证</span>
+                                    <span className="block text-sm text-gray-600">Verified tutor credentials</span>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-red-500">🔒</span>
                                 <div>
-                                    <span className="block text-gray-800">安全支付</span>
-                                    <span className="block text-sm text-gray-600">Secure payment</span>
+                                    <span className="block text-gray-800">安全支付保障</span>
+                                    <span className="block text-sm text-gray-600">Secure payment system</span>
+                                </div>
+                            </div>
+                            {/* 24hr refund policy*/}
+                            <div className="flex items-center gap-2">
+                                <span className="text-red-500">🔄</span>
+                                <div>
+                                    <span className="block text-gray-800">24小时退款保障</span>
+                                    <span className="block text-sm text-gray-600">24-hour refund guarantee</span>
                                 </div>
                             </div>
                         </div>
