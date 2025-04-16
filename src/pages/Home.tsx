@@ -94,8 +94,8 @@ export default function Home() {
                             <div className="flex items-center gap-2">
                                 <span className="text-red-500">💻</span>
                                 <div>
-                                    <span className="block text-gray-800">超过10万英语老师</span>
-                                    <span className="block text-sm text-gray-600">100,000+ English tutors available</span>
+                                    <span className="block text-gray-800">超过1.7万英语老师</span>
+                                    <span className="block text-sm text-gray-600">17,000+ English tutors available</span>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
