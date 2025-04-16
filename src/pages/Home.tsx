@@ -179,7 +179,7 @@ export default function Home() {
                                     <div className="p-4">
                                         <div className="flex items-center justify-between mb-1">
                                             <h3 className="font-semibold text-lg">{tutor.firstName} {tutor.lastName}</h3>
-                                            {tutor.tutorProfile.applicationStatus === "APPROVED" && (
+                                            {tutor.tutorProfile?.applicationStatus === "APPROVED" && (
                                                 <span className="text-violet-600 px-2 py-1 text-xs bg-violet-50 rounded-full">Verified  实名认证</span>
                                             )}
                                         </div>
@@ -187,15 +187,15 @@ export default function Home() {
                                             <div className="flex items-center text-yellow-400">
                                                 <i className="fas fa-star"></i>
                                                 <span className="ml-1 text-gray-700 text-sm">
-                                                    {tutor.tutorStats.averageRating || "New"}
+                                                    {tutor.tutorStats?.averageRating || "New"}
                                                 </span>
                                             </div>
                                             <span className="text-gray-500 text-sm">
-                                                ({tutor.tutorStats.completedSessions} sessions)
+                                                ({tutor.tutorStats?.completedSessions} sessions)
                                             </span>
                                         </div>
                                         <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                                            {tutor.tutorProfile.aboutMe || `${tutor.tutorProfile.teachingStyle} - ${tutor.tutorProfile.educationLevel}`}
+                                            {tutor.tutorProfile?.aboutMe || `${tutor.tutorProfile?.teachingStyle} - ${tutor.tutorProfile?.educationLevel}`}
                                         </p>
                                         <div className="flex items-center justify-between pt-2 border-t">
                                             <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white w-full">

@@ -737,7 +737,6 @@ const TutorView: React.FC = () => {
                                                     onClick={() => navigate('/study/payments')}
                                                     className="bg-red-500 hover:bg-red-600 text-white rounded-full px-8"
                                                     disabled={isSubscribeNavigating}
-                                                    onClick={() => setIsSubscribeNavigating(true)}
                                                 >
                                                     {isSubscribeNavigating ? (
                                                         <span className="flex items-center">

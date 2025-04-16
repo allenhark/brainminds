@@ -315,7 +315,9 @@ const LoginSignup = () => {
                         //show toaster
                         toast.success('Your account has been verified, please login to continue / 您的账户已验证，请登录继续');
                         //window.location.href = '/';
-                        navigate('/login');
+                        //navigate('/login');
+                        //refresh window
+                        window.location.reload();
                     } else {
                         // If no user data, go to login
                         setFormState('login');
@@ -377,7 +379,8 @@ const LoginSignup = () => {
                     // Redirect to home page
                     //window.location.href = '/';
                     toast.success('Your password has been reset, please login to continue / 您的密码已重置，请登录继续');
-                    navigate('/login');
+                    //navigate('/login');
+                    window.location.reload();
                 } else {
                     // If no user data, go to login
                     setFormState('login');

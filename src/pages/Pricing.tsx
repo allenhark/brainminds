@@ -1,7 +1,8 @@
 import { Button } from "~/ui/button";
-
+import { useNavigate } from "react-router-dom";
 
 export default function PricingPage() {
+    const navigate = useNavigate();
     return (
         <div className="flex flex-col justify-center items-center">
             {/* Hero Section */}
@@ -59,7 +60,11 @@ export default function PricingPage() {
                                     </li>
                                 ))}
                             </ul>
-                            <Button className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white text-lg py-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
+                            <Button className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white text-lg py-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                                onClick={() => {
+                                    navigate('/login');
+                                }}
+                            >
                                 选择计划 Choose Plan
                             </Button>
                         </div>
