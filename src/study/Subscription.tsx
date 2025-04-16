@@ -1,20 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import Api from '@/Api';
 import toast from 'react-hot-toast';
-import LoadingSpinner from '@/components/ui/loading-spinner';
 import wsService from '@/services/wsService';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { url } from '@/config';
 import HelmetComponent from '@/components/HelmetComponent';
+import { QRCodeSVG } from "qrcode.react";
 
 // Types
 interface Message {
@@ -78,7 +73,7 @@ const Subscription: React.FC = () => {
     const [retryDelay, setRetryDelay] = useState<number>(1000);
     const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting');
     const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
+    const wechatId = "https://u.wechat.com/kDAHPYlSKR_Ae9fr_iygEOY?s=2";
     const isRenew = mode === 'renew';
     const price = 13000; // ¥13,000
 
@@ -621,14 +616,6 @@ const Subscription: React.FC = () => {
                                             <span>学习资料库访问 / Access to learning materials</span>
                                         </li>
                                     </ul>
-                                    <Button
-                                        className="w-full bg-red-500 hover:bg-red-600"
-                                        onClick={handleSubscribe}
-                                    >
-                                        <i className="fas fa-credit-card mr-2"></i>
-                                        立即订阅
-                                        <span className="block text-xs mt-0.5">Subscribe Now</span>
-                                    </Button>
                                 </div>
                             </div>
                         )}
@@ -646,6 +633,42 @@ const Subscription: React.FC = () => {
                             </span>
                         </CardDescription>
                     </CardHeader>
+                    <CardContent>
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-gray-300"></div>
+                            </div>
+                            <div className="relative flex justify-center text-sm">
+                                <span className="px-2 bg-white text-gray-500">或者通过微信联系 / Or contact via WeChat</span>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-lg border text-center">
+                            <h4 className="font-semibold text-lg mb-4">
+                                微信联系
+                                <span className="block text-base text-gray-600 mt-1">WeChat Contact</span>
+                            </h4>
+                            <p className="text-gray-600 mb-4">
+                                扫描二维码添加客服微信，了解更多课程详情和支付方式
+                                <span className="block mt-1">Scan QR code to add our customer service on WeChat for more course details and payment options</span>
+                            </p>
+                            <div className="bg-gray-100 p-4 rounded-lg flex justify-center">
+                                <div className="w-48 h-48 bg-white p-2 rounded">
+                                    <QRCodeSVG
+                                        value={wechatId}
+                                        size={200}
+                                        level="H"
+                                        includeMargin={true}
+                                    />
+                                </div>
+                            </div>
+                            <p className="text-center text-sm text-gray-500 mt-2">
+                                扫描二维码添加客服微信
+                                <span className="block">Scan QR code to add customer service on WeChat</span>
+                            </p>
+                        </div>
+                    </CardContent>
+
                     <CardContent>
                         {!selectedChat ? (
                             <div className="space-y-4">
@@ -672,6 +695,8 @@ const Subscription: React.FC = () => {
                                         </>
                                     )}
                                 </Button>
+
+
                             </div>
                         ) : (
                             <div>
@@ -771,6 +796,40 @@ const Subscription: React.FC = () => {
                                 </div>
                             </div>
                         )}
+                    </CardContent>
+                </Card>
+
+                {/* WeChat Contact Card - Always visible */}
+                <Card className="bg-gradient-to-b from-green-50 via-green-50/50 to-white mb-8">
+                    <CardHeader>
+                        <CardTitle className="text-2xl">
+                            微信联系
+                            <span className="block text-lg mt-1 text-gray-600">WeChat Contact</span>
+                        </CardTitle>
+                        <CardDescription>
+                            扫描二维码添加客服微信，了解更多课程详情和支付方式
+                            <span className="block text-sm mt-1">
+                                Scan QR code to add our customer service on WeChat for more course details and payment options
+                            </span>
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="bg-white p-6 rounded-lg border text-center">
+                            <div className="bg-gray-100 p-4 rounded-lg flex justify-center">
+                                <div className="w-48 h-48 bg-white p-2 rounded">
+                                    <QRCodeSVG
+                                        value={wechatId}
+                                        size={200}
+                                        level="H"
+                                        includeMargin={true}
+                                    />
+                                </div>
+                            </div>
+                            <p className="text-center text-sm text-gray-500 mt-4">
+                                扫描二维码添加客服微信
+                                <span className="block">Scan QR code to add customer service on WeChat</span>
+                            </p>
+                        </div>
                     </CardContent>
                 </Card>
             </div>

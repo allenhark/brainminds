@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Api from "@/Api";
 import { useEffect, useState } from "react";
@@ -48,6 +48,7 @@ export default function Tutor() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [suggestedTutors, setSuggestedTutors] = useState<TutorData[]>([]);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchTutors = async () => {
@@ -186,13 +187,25 @@ export default function Tutor() {
 
                     {/* Action Buttons */}
                     <div className="mt-4 space-y-3">
-                        <Button className="w-full bg-red-500 hover:bg-red-600 text-white">
+                        <Button className="w-full bg-red-500 hover:bg-red-600 text-white"
+                            onClick={() => {
+                                navigate('/login');
+                            }}
+                        >
                             开始学习 Start Learning
                         </Button>
-                        <Button variant="outline" className="w-full">
+                        <Button variant="outline" className="w-full"
+                            onClick={() => {
+                                navigate('/login');
+                            }}
+                        >
                             发送消息 Send Message
                         </Button>
-                        <Button variant="ghost" className="w-full flex items-center justify-center gap-2">
+                        <Button variant="ghost" className="w-full flex items-center justify-center gap-2"
+                            onClick={() => {
+                                navigate('/login');
+                            }}
+                        >
                             <i className="fas fa-heart h-4 w-4"></i>
                             <span>收藏老师 Save to My List</span>
                         </Button>

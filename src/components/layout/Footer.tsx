@@ -1,6 +1,10 @@
 import { Link } from 'react-router-dom'
+import { QRCodeSVG } from "qrcode.react";
 
 export default function Footer() {
+
+  const wechatId = "https://u.wechat.com/kDAHPYlSKR_Ae9fr_iygEOY?s=2";
+
   return (
     <footer className="bg-gray-900 text-white flex justify-center items-center">
       <div className="container max-w-6xl mx-auto px-4 py-12">
@@ -48,15 +52,19 @@ export default function Footer() {
         </div>
 
         {/* Regular Footer Content */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
           <div>
-            <h3 className="text-lg md:text-xl font-bold mb-4">关于我们 About Us</h3>
-            <ul className="space-y-2 text-xs md:text-sm text-gray-400">
-              <li><Link to="/who-we-are" className="hover:text-red-500">关于我们 About Us</Link></li>
-              <li><Link to="/press" className="hover:text-red-500">媒体报道 Media Coverage</Link></li>
-              <li><Link to="/careers" className="hover:text-red-500">工作机会 Career Opportunities</Link></li>
-              <li><Link to="/blog" className="hover:text-red-500">官方博客 Official Blog</Link></li>
-            </ul>
+            <h3 className="text-lg md:text-xl font-bold mb-4">客户支持 Customer Support</h3>
+            <div className="space-y-2 text-xs md:text-sm text-gray-400">
+              <QRCodeSVG
+                value={wechatId}
+                size={120}
+                level="H"
+                includeMargin={true}
+                bgColor="#111827"
+                fgColor="#ffffff"
+              />
+            </div>
           </div>
           <div>
             <h3 className="text-lg md:text-xl font-bold mb-4">课程类型 Course Types</h3>
@@ -67,18 +75,11 @@ export default function Footer() {
               <li><Link to="/subjects/kids" className="hover:text-red-500">少儿英语 Children's English</Link></li>
             </ul>
           </div>
-          <div>
-            <h3 className="text-lg md:text-xl font-bold mb-4">加入我们 Join Us</h3>
-            <ul className="space-y-2 text-xs md:text-sm text-gray-400">
-              <li><Link to="/become-tutor" className="hover:text-red-500">成为教师 Become a Teacher</Link></li>
-              <li><Link to="/careers" className="hover:text-red-500">加入团队 Join Our Team</Link></li>
-              <li><Link to="/contact" className="hover:text-red-500">联系方式 Contact Information</Link></li>
-            </ul>
-          </div>
+
           <div>
             <h3 className="text-lg md:text-xl font-bold mb-4">帮助中心 Help Center</h3>
             <ul className="space-y-2 text-xs md:text-sm text-gray-400">
-              <li><Link to="/help" className="hover:text-red-500">帮助中心 Help Center</Link></li>
+              <li><Link to="/become-tutor" className="hover:text-red-500">成为教师 Become a Teacher</Link></li>
               <li><Link to="/faq" className="hover:text-red-500">常见问题 FAQs</Link></li>
               <li><Link to="/contact" className="hover:text-red-500">客户支持 Customer Support</Link></li>
             </ul>
@@ -89,7 +90,7 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-center mt-8 md:mt-12 pt-8 border-t border-gray-800">
           <div className="flex items-center gap-2 mb-4 md:mb-0">
             <span className="text-red-500 text-lg md:text-xl font-semibold">学习English</span>
-            <span className="text-xs md:text-sm text-gray-400">© 2025 Learn with passion!</span>
+            <span className="text-xs md:text-sm text-gray-400">© 2018 - 2025 Learn with passion!</span>
           </div>
           <div className="flex gap-4">
             <Link to="#" className="text-gray-400 hover:text-red-500 transition-colors">
