@@ -13,6 +13,8 @@ import ContactPage from './pages/contact'
 import IELTSCoursePage from './pages/subjects/ielts'
 import GeneralEnglishCoursePage from './pages/subjects/general'
 import BusinessEnglishPage from './pages/subjects/business'
+import TOEFLCoursePage from './pages/subjects/toefl'
+import KidsEnglishCoursePage from './pages/subjects/kids'
 
 // Location pages
 import BeijingPage from './pages/beijing'
@@ -98,6 +100,8 @@ function App() {
           <Route path="/subjects/ielts" element={<IELTSCoursePage />} />
           <Route path="/subjects/general" element={<GeneralEnglishCoursePage />} />
           <Route path="/subjects/business" element={<BusinessEnglishPage />} />
+          <Route path="/subjects/toefl" element={<TOEFLCoursePage />} />
+          <Route path="/subjects/kids" element={<KidsEnglishCoursePage />} />
 
           {/* Location-based routes */}
           {/* Beijing routes */}

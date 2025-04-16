@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import HelmetComponent from "../../components/HelmetComponent";
 
 export default function IELTSCoursePage() {
+    const navigate = useNavigate();
     return (
         <div className="flex flex-col justify-center items-center">
             <HelmetComponent
@@ -30,10 +31,12 @@ export default function IELTSCoursePage() {
                         </p>
 
                         <div className="flex flex-wrap gap-3">
-                            <Button className="rounded-full bg-blue-600 text-white hover:bg-blue-700">
+                            <Button className="rounded-full bg-blue-600 text-white hover:bg-blue-700"
+                                onClick={() => navigate('/login')}>
                                 免费评估 / Free Assessment
                             </Button>
-                            <Button variant="outline" className="rounded-full bg-white">
+                            <Button variant="outline" className="rounded-full bg-white"
+                                onClick={() => navigate('/login')}>
                                 查看课程价格 / View Pricing
                             </Button>
                         </div>
@@ -150,7 +153,7 @@ export default function IELTSCoursePage() {
                                     </li>
                                 </ul>
                                 <Link to="/contact">
-                                    <Button variant="outline" className="w-full">了解更多 Learn More</Button>
+                                    了解更多 Learn More
                                 </Link>
                             </div>
                         </div>
